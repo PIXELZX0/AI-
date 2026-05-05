@@ -1,0 +1,57 @@
+- main [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]: AI+
+      - generic [ref=e6]:
+        - heading "AI+" [level=1] [ref=e7]
+        - paragraph [ref=e8]: Browser Preview 0.0
+    - generic [ref=e9]:
+      - button "Refresh host" [ref=e10] [cursor=pointer]: ↻
+      - button "Provider" [ref=e11] [cursor=pointer]: ⚙
+  - generic [ref=e12]:
+    - region "Conversation" [ref=e13]:
+      - log [ref=e14]:
+        - article [ref=e15]:
+          - generic [ref=e16]: AI
+          - generic [ref=e17]:
+            - generic [ref=e18]:
+              - generic [ref=e19]: AI+
+              - generic [ref=e20]: 오전 10:53
+            - paragraph [ref=e21]: Ready.
+      - generic "Prompt shortcuts" [ref=e22]:
+        - button "Summarize" [ref=e23] [cursor=pointer]
+        - button "Title" [ref=e24] [cursor=pointer]
+        - button "Fade" [ref=e25] [cursor=pointer]
+        - button "Organize" [ref=e26] [cursor=pointer]
+        - button "Markers" [ref=e27] [cursor=pointer]
+        - button "Export" [ref=e28] [cursor=pointer]
+      - generic [ref=e29]:
+        - textbox "Message AI+" [ref=e30]
+        - generic [ref=e31]:
+          - button "Plan" [ref=e32] [cursor=pointer]
+          - button "Run" [ref=e33] [cursor=pointer]
+    - complementary "Session" [ref=e34]:
+      - region "Status" [ref=e35]:
+        - generic [ref=e36]:
+          - generic [ref=e37]: Host
+          - strong [ref=e38]: preview
+        - generic [ref=e39]:
+          - generic [ref=e40]: Mode
+          - strong [ref=e41]: Built-in
+        - generic [ref=e42]:
+          - generic [ref=e43]: State
+          - strong [ref=e44]: Idle
+      - generic [ref=e45]:
+        - generic [ref=e46]:
+          - heading "Current Plan" [level=2] [ref=e47]
+          - button "Copy plan" [ref=e48] [cursor=pointer]: □
+        - list [ref=e49]
+      - generic [ref=e50]:
+        - generic [ref=e51]:
+          - heading "Activity" [level=2] [ref=e52]
+          - button "Clear" [ref=e53] [cursor=pointer]: ×
+        - log [ref=e54]:
+          - generic [ref=e55]:
+            - strong [ref=e56]: host
+            - text: Connected to Browser Preview.
+      - generic [ref=e58]: v0.1.0

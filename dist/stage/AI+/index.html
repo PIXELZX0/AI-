@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AI+</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="./src/css/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="appbar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">AI+</div>
+          <div class="brand-copy">
+            <h1>AI+</h1>
+            <p id="hostLabel">Adobe panel</p>
+          </div>
+        </div>
+        <div class="appbar-actions">
+          <button id="refreshHostButton" class="icon-button" type="button" title="Refresh host" aria-label="Refresh host">↻</button>
+          <button id="settingsButton" class="icon-button" type="button" title="Provider" aria-label="Provider">⚙</button>
+        </div>
+      </header>
+
+      <section class="workspace">
+        <section class="chat-panel" aria-label="Conversation">
+          <div id="messageList" class="message-list" role="log" aria-live="polite"></div>
+
+          <div class="suggestion-row" aria-label="Prompt shortcuts">
+            <button class="tool-chip" type="button" data-command="Summarize this project and list the next best edits.">Summarize</button>
+            <button class="tool-chip" type="button" data-command="Create a clean title card for the active composition.">Title</button>
+            <button class="tool-chip" type="button" data-command="Add fade in and fade out animation to selected layers.">Fade</button>
+            <button class="tool-chip" type="button" data-command="Organize the project into audio, video, comps, assets, and exports.">Organize</button>
+            <button class="tool-chip" type="button" data-command="Add review markers for intro, middle, and ending.">Markers</button>
+            <button class="tool-chip" type="button" data-command="Queue the active comp or sequence for export with safe defaults.">Export</button>
+          </div>
+
+          <form id="composerForm" class="composer">
+            <textarea id="promptInput" rows="1" spellcheck="false" placeholder="Message AI+"></textarea>
+            <div class="composer-actions">
+              <button id="planButton" class="secondary-button" type="button">Plan</button>
+              <button id="runButton" class="primary-button" type="submit">Run</button>
+            </div>
+          </form>
+        </section>
+
+        <aside class="side-panel" aria-label="Session">
+          <section class="status-grid" aria-label="Status">
+            <div class="metric">
+              <span>Host</span>
+              <strong id="hostMetric">Unknown</strong>
+            </div>
+            <div class="metric">
+              <span>Mode</span>
+              <strong id="modeMetric">Offline</strong>
+            </div>
+            <div class="metric">
+              <span>State</span>
+              <strong id="runState">Idle</strong>
+            </div>
+          </section>
+
+          <section class="pane current-plan">
+            <div class="pane-heading">
+              <h2>Current Plan</h2>
+              <button id="copyPlanButton" class="icon-button small" type="button" title="Copy plan" aria-label="Copy plan">□</button>
+            </div>
+            <ol id="planList" class="plan-list"></ol>
+          </section>
+
+          <section class="pane activity-pane">
+            <div class="pane-heading">
+              <h2>Activity</h2>
+              <button id="clearButton" class="icon-button small" type="button" title="Clear" aria-label="Clear">×</button>
+            </div>
+            <div id="logList" class="log-list" role="log" aria-live="polite"></div>
+          </section>
+
+          <footer class="footerbar">
+            <span id="versionLabel">v0.1.0</span>
+          </footer>
+        </aside>
+      </section>
+
+      <dialog id="settingsDialog">
+        <form method="dialog" class="settings-form">
+          <header>
+            <h2>AI Provider</h2>
+            <button class="icon-button small" value="cancel" type="submit" title="Close" aria-label="Close">×</button>
+          </header>
+          <label for="endpointInput">Local planning endpoint</label>
+          <input id="endpointInput" type="url" placeholder="http://127.0.0.1:8787/plan">
+          <p>Empty uses the built-in planner.</p>
+          <menu>
+            <button id="saveSettingsButton" class="primary-button" value="default" type="submit">Save</button>
+          </menu>
+        </form>
+      </dialog>
+    </main>
+
+    <script src="./src/js/cep.js"></script>
+    <script src="./src/js/toolRegistry.js"></script>
+    <script src="./src/js/provider.js"></script>
+    <script src="./src/js/agent.js"></script>
+    <script src="./src/js/app.js"></script>
+  </body>
+</html>

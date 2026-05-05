@@ -1,0 +1,135 @@
+- main [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]: AI+
+      - generic [ref=e6]:
+        - heading "AI+" [level=1] [ref=e7]
+        - paragraph [ref=e8]: Browser Preview 0.0
+    - generic [ref=e9]:
+      - button "Refresh host" [ref=e10] [cursor=pointer]: ↻
+      - button "Provider" [ref=e11] [cursor=pointer]: ⚙
+  - generic [ref=e12]:
+    - region "Conversation" [ref=e13]:
+      - log [ref=e14]:
+        - article [ref=e15]:
+          - generic [ref=e16]: AI
+          - generic [ref=e17]:
+            - generic [ref=e18]:
+              - generic [ref=e19]: AI+
+              - generic [ref=e20]: 오전 10:53
+            - paragraph [ref=e21]: Ready.
+        - article [ref=e59]:
+          - generic [ref=e60]: You
+          - generic [ref=e61]:
+            - generic [ref=e62]:
+              - generic [ref=e63]: You
+              - generic [ref=e64]: 오전 10:53
+            - paragraph [ref=e65]: Create an intro title and add fade animation
+        - article [ref=e66]:
+          - generic [ref=e67]: AI
+          - generic [ref=e68]:
+            - generic [ref=e69]:
+              - generic [ref=e70]: AI+
+              - generic [ref=e71]: 오전 10:53
+            - paragraph [ref=e72]: 4 action(s) ready.
+            - generic [ref=e73]:
+              - generic [ref=e74]:
+                - generic [ref=e75]: "1"
+                - generic [ref=e76]:
+                  - strong [ref=e77]: Create composition
+                  - text: Create a clean working composition.
+              - generic [ref=e78]:
+                - generic [ref=e79]: "2"
+                - generic [ref=e80]:
+                  - strong [ref=e81]: Add text
+                  - text: Add editable text that can be refined in Adobe.
+              - generic [ref=e82]:
+                - generic [ref=e83]: "3"
+                - generic [ref=e84]:
+                  - strong [ref=e85]: Style text
+                  - text: Give the text a readable default style.
+              - generic [ref=e86]:
+                - generic [ref=e87]: "4"
+                - generic [ref=e88]:
+                  - strong [ref=e89]: Fade animation
+                  - text: Animate selected layers with simple timing.
+        - article [ref=e90]:
+          - generic [ref=e91]: AI
+          - generic [ref=e92]:
+            - generic [ref=e93]:
+              - generic [ref=e94]: AI+
+              - generic [ref=e95]: 오전 10:53
+            - paragraph [ref=e96]: Done.
+            - generic [ref=e97]:
+              - generic [ref=e98]: Previewed createComposition.
+              - generic [ref=e99]: Previewed addTextLayer.
+              - generic [ref=e100]: Previewed applyTextStyle.
+              - generic [ref=e101]: Previewed addFadeInOut.
+      - generic "Prompt shortcuts" [ref=e22]:
+        - button "Summarize" [ref=e23] [cursor=pointer]
+        - button "Title" [ref=e24] [cursor=pointer]
+        - button "Fade" [ref=e25] [cursor=pointer]
+        - button "Organize" [ref=e26] [cursor=pointer]
+        - button "Markers" [ref=e27] [cursor=pointer]
+        - button "Export" [ref=e28] [cursor=pointer]
+      - generic [ref=e29]:
+        - textbox "Message AI+" [active] [ref=e30]
+        - generic [ref=e31]:
+          - button "Plan" [ref=e32] [cursor=pointer]
+          - button "Run" [ref=e33] [cursor=pointer]
+    - complementary "Session" [ref=e34]:
+      - region "Status" [ref=e35]:
+        - generic [ref=e36]:
+          - generic [ref=e37]: Host
+          - strong [ref=e38]: preview
+        - generic [ref=e39]:
+          - generic [ref=e40]: Mode
+          - strong [ref=e41]: Built-in
+        - generic [ref=e42]:
+          - generic [ref=e43]: State
+          - strong [ref=e44]: Idle
+      - generic [ref=e45]:
+        - generic [ref=e46]:
+          - heading "Current Plan" [level=2] [ref=e47]
+          - button "Copy plan" [ref=e48] [cursor=pointer]: □
+        - list [ref=e49]:
+          - listitem [ref=e102]:
+            - generic [ref=e103]:
+              - strong [ref=e104]: Create composition
+              - generic [ref=e105]: Create a clean working composition.
+          - listitem [ref=e106]:
+            - generic [ref=e107]:
+              - strong [ref=e108]: Add text
+              - generic [ref=e109]: Add editable text that can be refined in Adobe.
+          - listitem [ref=e110]:
+            - generic [ref=e111]:
+              - strong [ref=e112]: Style text
+              - generic [ref=e113]: Give the text a readable default style.
+          - listitem [ref=e114]:
+            - generic [ref=e115]:
+              - strong [ref=e116]: Fade animation
+              - generic [ref=e117]: Animate selected layers with simple timing.
+      - generic [ref=e50]:
+        - generic [ref=e51]:
+          - heading "Activity" [level=2] [ref=e52]
+          - button "Clear" [ref=e53] [cursor=pointer]: ×
+        - log [ref=e54]:
+          - generic [ref=e55]:
+            - strong [ref=e56]: host
+            - text: Connected to Browser Preview.
+          - generic [ref=e118]:
+            - strong [ref=e119]: plan
+            - text: 4 action(s) ready.
+          - generic [ref=e120]:
+            - strong [ref=e121]: done
+            - text: Previewed createComposition.
+          - generic [ref=e122]:
+            - strong [ref=e123]: done
+            - text: Previewed addTextLayer.
+          - generic [ref=e124]:
+            - strong [ref=e125]: done
+            - text: Previewed applyTextStyle.
+          - generic [ref=e126]:
+            - strong [ref=e127]: done
+            - text: Previewed addFadeInOut.
+      - generic [ref=e58]: v0.1.0
