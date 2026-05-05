@@ -143,6 +143,8 @@ npm run package:zxp:signed
 
 More detail lives in `docs/ZXP_BUILD.md`.
 
+Stable GitHub releases are created from version tags such as `v0.1.0`. The release workflow validates the tag against `package.json` and attaches the signed ZXP when one is available.
+
 ## Current Tools
 
 - `summarizeProject`

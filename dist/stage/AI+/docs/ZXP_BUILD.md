@@ -41,3 +41,9 @@ Signed output:
 ```text
 dist/AIPlus-0.1.0.zxp
 ```
+
+## GitHub Release Automation
+
+`.github/workflows/release-zxp.yml` packages a ZXP automatically when a GitHub release is published or when a version tag such as `v0.1.0` is pushed.
+
+The workflow runs on `blacksmith-2vcpu-ubuntu-2404`, checks that the release tag matches `package.json`, runs the JavaScript syntax check, creates `dist/AIPlus-<version>-dev.zxp`, and stores it as a workflow artifact. Stable tag releases prefer an existing signed `dist/AIPlus-<version>.zxp` artifact when one is present, falling back to the development ZXP otherwise.

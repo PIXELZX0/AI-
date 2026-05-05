@@ -1,0 +1,107 @@
+name: Release ZXP
+
+on:
+  push:
+    tags:
+      - "v*"
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-zxp-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  package-zxp:
+    name: Package ZXP
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+
+    steps:
+      - name: Checkout release ref
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Validate release tag
+        if: github.event_name == 'release' || github.ref_type == 'tag'
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [ -z "$RELEASE_TAG" ]; then
+            RELEASE_TAG="${GITHUB_REF_NAME}"
+          fi
+
+          package_version="$(node -p "require('./package.json').version")"
+          normalized_tag="${RELEASE_TAG#v}"
+
+          if [ "$normalized_tag" != "$package_version" ]; then
+            echo "::error::Release tag '$RELEASE_TAG' does not match package.json version '$package_version'."
+            exit 1
+          fi
+
+      - name: Check JavaScript syntax
+        run: npm run check
+
+      - name: Package development ZXP
+        run: npm run package:zxp
+
+      - name: Resolve ZXP artifact
+        id: zxp
+        shell: bash
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          signed_artifact="dist/AIPlus-${version}.zxp"
+          dev_artifact="dist/AIPlus-${version}-dev.zxp"
+
+          if [ -f "$signed_artifact" ]; then
+            zxp_path="$signed_artifact"
+          elif [ -f "$dev_artifact" ]; then
+            zxp_path="$dev_artifact"
+          else
+            echo "::error::No ZXP artifact found for version $version."
+            find dist -maxdepth 1 -name '*.zxp' -print
+            exit 1
+          fi
+
+          zxp_name="$(basename "$zxp_path")"
+          echo "path=$zxp_path" >> "$GITHUB_OUTPUT"
+          echo "name=$zxp_name" >> "$GITHUB_OUTPUT"
+
+      - name: Publish stable GitHub release
+        if: github.event_name == 'push' && github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.ref_name }}
+          ZXP_PATH: ${{ steps.zxp.outputs.path }}
+        run: |
+          version="${TAG_NAME#v}"
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            gh release upload "$TAG_NAME" "$ZXP_PATH" --clobber
+          else
+            gh release create "$TAG_NAME" "$ZXP_PATH" \
+              --title "AI+ $version" \
+              --notes "Stable AI+ $version release." \
+              --latest
+          fi
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.zxp.outputs.name }}
+          path: ${{ steps.zxp.outputs.path }}
+          if-no-files-found: error
+
+      - name: Attach ZXP to GitHub release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
+          ZXP_PATH: ${{ steps.zxp.outputs.path }}
+        run: gh release upload "$TAG_NAME" "$ZXP_PATH" --clobber
