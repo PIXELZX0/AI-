@@ -49,8 +49,20 @@ jobs:
       - name: Check JavaScript syntax
         run: npm run check
 
-      - name: Package development ZXP
-        run: npm run package:zxp
+      - name: Install ZXP signing tool
+        run: |
+          npm install --no-save zxp-signer@1.0.6
+          zxp_sign_cmd="$(node -e "console.log(require('zxp-signer')())")"
+          chmod +x "$zxp_sign_cmd"
+          echo "ZXP_SIGN_CMD=$zxp_sign_cmd" >> "$GITHUB_ENV"
+
+      - name: Package signed ZXP
+        run: npm run package:zxp:signed
+
+      - name: Verify signed ZXP
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          "$ZXP_SIGN_CMD" -verify "dist/AIPlus-${version}.zxp"
 
       - name: Resolve ZXP artifact
         id: zxp
@@ -58,14 +70,11 @@ jobs:
         run: |
           version="$(node -p "require('./package.json').version")"
           signed_artifact="dist/AIPlus-${version}.zxp"
-          dev_artifact="dist/AIPlus-${version}-dev.zxp"
 
           if [ -f "$signed_artifact" ]; then
             zxp_path="$signed_artifact"
-          elif [ -f "$dev_artifact" ]; then
-            zxp_path="$dev_artifact"
           else
-            echo "::error::No ZXP artifact found for version $version."
+            echo "::error::No signed ZXP artifact found for version $version."
             find dist -maxdepth 1 -name '*.zxp' -print
             exit 1
           fi
@@ -87,7 +96,7 @@ jobs:
           else
             gh release create "$TAG_NAME" "$ZXP_PATH" \
               --title "AI+ $version" \
-              --notes "Stable AI+ $version release." \
+              --notes "Stable AI+ $version signed release. Install AIPlus-$version.zxp for normal Adobe use." \
               --latest
           fi
 
