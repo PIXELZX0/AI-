@@ -11,49 +11,117 @@
     <main class="shell">
       <header class="appbar">
         <div class="brand">
-          <div class="brand-mark" aria-hidden="true">AI+</div>
+          <div class="atom-badge" aria-hidden="true">
+            <span class="atom-core"></span>
+            <span class="atom-orbit orbit-a"></span>
+            <span class="atom-orbit orbit-b"></span>
+          </div>
           <div class="brand-copy">
             <h1>AI+</h1>
             <p id="hostLabel">Adobe panel</p>
           </div>
         </div>
+
+        <nav class="top-nav" aria-label="Primary">
+          <button id="newChatButton" class="nav-button" type="button">New chat</button>
+          <button id="historyButton" class="nav-button" type="button">History</button>
+          <button id="mcpModeButton" class="nav-button" type="button">MCP</button>
+        </nav>
+
         <div class="appbar-actions">
+          <span id="licensePill" class="status-pill">Local trial</span>
           <button id="refreshHostButton" class="icon-button" type="button" title="Refresh host" aria-label="Refresh host">↻</button>
-          <button id="settingsButton" class="icon-button" type="button" title="Provider" aria-label="Provider">⚙</button>
+          <button id="settingsButton" class="icon-button" type="button" title="Settings" aria-label="Settings">⚙</button>
         </div>
       </header>
 
       <section class="workspace">
-        <section class="chat-panel" aria-label="Conversation">
-          <div id="messageList" class="message-list" role="log" aria-live="polite"></div>
-
-          <div class="suggestion-row" aria-label="Prompt shortcuts">
-            <button class="tool-chip" type="button" data-command="Summarize this project and list the next best edits.">Summarize</button>
-            <button class="tool-chip" type="button" data-command="Create a clean title card for the active composition.">Title</button>
-            <button class="tool-chip" type="button" data-command="Add fade in and fade out animation to selected layers.">Fade</button>
-            <button class="tool-chip" type="button" data-command="Organize the project into audio, video, comps, assets, and exports.">Organize</button>
-            <button class="tool-chip" type="button" data-command="Add review markers for intro, middle, and ending.">Markers</button>
-            <button class="tool-chip" type="button" data-command="Queue the active comp or sequence for export with safe defaults.">Export</button>
+        <aside id="drawerPanel" class="drawer-panel" aria-label="History and skills">
+          <div class="panel-tabs" role="tablist" aria-label="Drawer tabs">
+            <button class="tab-button active" type="button" data-drawer-tab="history">History</button>
+            <button class="tab-button" type="button" data-drawer-tab="skills">Skills</button>
           </div>
 
+          <section id="historyView" class="drawer-view">
+            <div id="historyList" class="stack-list" aria-label="Conversation history"></div>
+          </section>
+
+          <section id="skillsView" class="drawer-view hidden">
+            <div id="skillList" class="stack-list" aria-label="Saved skills"></div>
+            <form id="skillForm" class="compact-form">
+              <input id="skillNameInput" type="text" placeholder="Skill name" autocomplete="off">
+              <input id="skillDescriptionInput" type="text" placeholder="When to use it" autocomplete="off">
+              <select id="skillScopeInput" aria-label="Skill scope">
+                <option value="global">Global</option>
+                <option value="project">Project</option>
+              </select>
+              <textarea id="skillInstructionInput" rows="4" placeholder="Instructions"></textarea>
+              <button class="primary-button" type="submit">Save skill</button>
+            </form>
+          </section>
+        </aside>
+
+        <section id="chatPanel" class="chat-panel" aria-label="Conversation">
+          <div id="mcpOverlay" class="mcp-overlay hidden">
+            <div class="atom-badge large" aria-hidden="true">
+              <span class="atom-core"></span>
+              <span class="atom-orbit orbit-a"></span>
+              <span class="atom-orbit orbit-b"></span>
+            </div>
+            <h2>MCP Mode</h2>
+            <p id="mcpUrlLabel">http://127.0.0.1:8787/mcp</p>
+            <div class="mcp-actions">
+              <button id="copyMcpUrlButton" class="secondary-button" type="button">Copy URL</button>
+              <button id="leaveMcpButton" class="primary-button" type="button">Return to chat</button>
+            </div>
+          </div>
+
+          <div id="messageList" class="message-list" role="log" aria-live="polite"></div>
+
+          <div class="shortcut-row" aria-label="Prompt shortcuts">
+            <button class="tool-chip" type="button" data-command="Create five square shape layers named Square 1 through Square 5.">Squares</button>
+            <button class="tool-chip" type="button" data-command="Add a controlled wiggle expression to the selected layer.">Expression</button>
+            <button class="tool-chip" type="button" data-command="Create a null called Master Controller with an Intensity slider and link selected layers to it.">Rig</button>
+            <button class="tool-chip" type="button" data-command="Animate the selected layers with a staggered opacity reveal.">Reveal</button>
+            <button class="tool-chip" type="button" data-command="Generate a 16:9 particle texture concept and import it into the project.">Image</button>
+            <button class="tool-chip" type="button" data-command="Organize the project into comps, footage, audio, assets, and exports.">Organize</button>
+          </div>
+
+          <div id="attachmentList" class="attachment-list" aria-label="Attachments"></div>
+
           <form id="composerForm" class="composer">
-            <textarea id="promptInput" rows="1" spellcheck="false" placeholder="Message AI+"></textarea>
+            <input id="fileInput" class="visually-hidden" type="file" multiple>
+            <button id="attachButton" class="icon-button composer-tool" type="button" title="Attach file" aria-label="Attach file">+</button>
+            <div class="composer-input-wrap">
+              <textarea id="promptInput" rows="1" spellcheck="false" placeholder="Message AI+"></textarea>
+              <div id="skillMenu" class="skill-menu hidden" role="listbox"></div>
+            </div>
             <div class="composer-actions">
+              <select id="thinkingSelect" class="compact-select" aria-label="Thinking depth">
+                <option value="auto">Auto</option>
+                <option value="fast">Fast</option>
+                <option value="deep">Deep</option>
+              </select>
+              <select id="modelSelect" class="compact-select" aria-label="Model">
+                <option value="codex">Codex</option>
+                <option value="claude">Claude</option>
+                <option value="endpoint">Endpoint</option>
+              </select>
               <button id="planButton" class="secondary-button" type="button">Plan</button>
               <button id="runButton" class="primary-button" type="submit">Run</button>
             </div>
           </form>
         </section>
 
-        <aside class="side-panel" aria-label="Session">
+        <aside class="inspector-panel" aria-label="Session">
           <section class="status-grid" aria-label="Status">
             <div class="metric">
               <span>Host</span>
               <strong id="hostMetric">Unknown</strong>
             </div>
             <div class="metric">
-              <span>Mode</span>
-              <strong id="modeMetric">Offline</strong>
+              <span>Model</span>
+              <strong id="modeMetric">Built-in</strong>
             </div>
             <div class="metric">
               <span>State</span>
@@ -61,7 +129,13 @@
             </div>
           </section>
 
-          <section class="pane current-plan">
+          <div class="panel-tabs" role="tablist" aria-label="Inspector tabs">
+            <button class="tab-button active" type="button" data-inspector-tab="plan">Plan</button>
+            <button class="tab-button" type="button" data-inspector-tab="checkpoints">Checkpoints</button>
+            <button class="tab-button" type="button" data-inspector-tab="activity">Activity</button>
+          </div>
+
+          <section id="planPane" class="pane">
             <div class="pane-heading">
               <h2>Current Plan</h2>
               <button id="copyPlanButton" class="icon-button small" type="button" title="Copy plan" aria-label="Copy plan">□</button>
@@ -69,7 +143,15 @@
             <ol id="planList" class="plan-list"></ol>
           </section>
 
-          <section class="pane activity-pane">
+          <section id="checkpointPane" class="pane hidden">
+            <div class="pane-heading">
+              <h2>Checkpoints</h2>
+              <button id="checkpointButton" class="icon-button small" type="button" title="Create checkpoint" aria-label="Create checkpoint">+</button>
+            </div>
+            <div id="checkpointList" class="checkpoint-list"></div>
+          </section>
+
+          <section id="activityPane" class="pane hidden">
             <div class="pane-heading">
               <h2>Activity</h2>
               <button id="clearButton" class="icon-button small" type="button" title="Clear" aria-label="Clear">×</button>
@@ -86,12 +168,49 @@
       <dialog id="settingsDialog">
         <form method="dialog" class="settings-form">
           <header>
-            <h2>AI Provider</h2>
+            <h2>Settings</h2>
             <button class="icon-button small" value="cancel" type="submit" title="Close" aria-label="Close">×</button>
           </header>
-          <label for="endpointInput">Local planning endpoint</label>
-          <input id="endpointInput" type="url" placeholder="http://127.0.0.1:8787/plan">
-          <p>Empty uses the built-in planner.</p>
+
+          <div class="settings-grid">
+            <label for="providerSelect">Provider</label>
+            <select id="providerSelect">
+              <option value="openai">OpenAI / Codex</option>
+              <option value="anthropic">Anthropic / Claude Code</option>
+              <option value="endpoint">Local endpoint</option>
+            </select>
+
+            <label for="modelInput">Model</label>
+            <input id="modelInput" type="text" placeholder="gpt-5.2-codex">
+
+            <label for="endpointInput">Planning endpoint</label>
+            <input id="endpointInput" type="url" placeholder="http://127.0.0.1:8787/plan">
+
+            <label for="openRouterInput">OpenRouter key</label>
+            <input id="openRouterInput" type="password" placeholder="sk-or-...">
+
+            <label for="imageModelSelect">Image model</label>
+            <select id="imageModelSelect">
+              <option value="google/nano-banana">Nano Banana</option>
+              <option value="google/nano-banana-pro">Nano Banana Pro</option>
+              <option value="openai/gpt-image-1">GPT Image</option>
+              <option value="openai/gpt-image-1-mini">GPT Image Mini</option>
+            </select>
+
+            <label for="preferredFontsInput">Preferred fonts</label>
+            <input id="preferredFontsInput" type="text" placeholder="Inter, Montserrat, Aeonik">
+
+            <label for="mcpPortInput">MCP port</label>
+            <input id="mcpPortInput" type="number" min="1024" max="65535" step="1">
+          </div>
+
+          <div class="toggle-grid">
+            <label><input id="confirmRevertsInput" type="checkbox"> Confirm reverts</label>
+            <label><input id="notificationSoundInput" type="checkbox"> Finish sound</label>
+            <label><input id="mcpClaudeInput" type="checkbox"> Claude Code</label>
+            <label><input id="mcpUrlInput" type="checkbox"> URL mode</label>
+          </div>
+
           <menu>
             <button id="saveSettingsButton" class="primary-button" value="default" type="submit">Save</button>
           </menu>

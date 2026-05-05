@@ -12,9 +12,37 @@
       risk: "read"
     },
     {
+      id: "inspectComposition",
+      label: "Inspect comp",
+      description: "Read layers, properties, expressions, markers, and selection from the active comp.",
+      hosts: ["after-effects", "preview"],
+      risk: "read"
+    },
+    {
+      id: "createCheckpoint",
+      label: "Create checkpoint",
+      description: "Save a restorable project checkpoint before or after automation.",
+      hosts: ["after-effects", "preview"],
+      risk: "write"
+    },
+    {
+      id: "restoreCheckpoint",
+      label: "Restore checkpoint",
+      description: "Open a saved After Effects project checkpoint.",
+      hosts: ["after-effects", "preview"],
+      risk: "destructive"
+    },
+    {
       id: "createComposition",
       label: "Create composition",
       description: "Create a new After Effects composition with safe defaults.",
+      hosts: ["after-effects", "preview"],
+      risk: "write"
+    },
+    {
+      id: "createShapeGrid",
+      label: "Create shape grid",
+      description: "Create square shape layers with names, layout, and optional color range.",
       hosts: ["after-effects", "preview"],
       risk: "write"
     },
@@ -28,7 +56,7 @@
     {
       id: "applyTextStyle",
       label: "Style text",
-      description: "Apply font size, fill color, and alignment to selected text.",
+      description: "Apply font size, fill color, alignment, and preferred font to selected text.",
       hosts: ["after-effects", "preview"],
       risk: "write"
     },
@@ -40,6 +68,20 @@
       risk: "write"
     },
     {
+      id: "cascadeReveal",
+      label: "Cascade reveal",
+      description: "Stagger opacity and position reveal keyframes across selected layers.",
+      hosts: ["after-effects", "preview"],
+      risk: "write"
+    },
+    {
+      id: "applyEasyEase",
+      label: "Easy ease",
+      description: "Apply temporal ease to keyframes on selected layers.",
+      hosts: ["after-effects", "preview"],
+      risk: "write"
+    },
+    {
       id: "addNullController",
       label: "Control null",
       description: "Create a null layer for controlling selected layers.",
@@ -47,9 +89,30 @@
       risk: "write"
     },
     {
+      id: "createSliderRig",
+      label: "Slider rig",
+      description: "Create a controller with slider controls and link selected layer properties.",
+      hosts: ["after-effects", "preview"],
+      risk: "write"
+    },
+    {
+      id: "applyExpression",
+      label: "Expression",
+      description: "Apply a safe expression to a selected transform property.",
+      hosts: ["after-effects", "preview"],
+      risk: "write"
+    },
+    {
       id: "normalizeLayerNames",
       label: "Rename layers",
       description: "Rename selected layers with clean numbered labels.",
+      hosts: ["after-effects", "preview"],
+      risk: "write"
+    },
+    {
+      id: "resetTransforms",
+      label: "Reset transforms",
+      description: "Reset scale, rotation, opacity, or position on selected layers.",
       hosts: ["after-effects", "preview"],
       risk: "write"
     },
@@ -73,6 +136,20 @@
       description: "Queue the active composition or sequence for render/export.",
       hosts: ["after-effects", "premiere-pro", "preview"],
       risk: "write"
+    },
+    {
+      id: "generateImageAsset",
+      label: "Image asset",
+      description: "Prepare an image-generation request and auto-import a generated or placeholder asset.",
+      hosts: ["after-effects", "preview"],
+      risk: "write"
+    },
+    {
+      id: "importAttachmentAsset",
+      label: "Import attachment",
+      description: "Import an attached local file into the After Effects project.",
+      hosts: ["after-effects", "preview"],
+      risk: "write"
     }
   ];
 
@@ -83,12 +160,23 @@
   }
 
   function supportsHost(tool, host) {
-    return tool.hosts.indexOf(host) !== -1;
+    return Boolean(tool && tool.hosts.indexOf(host) !== -1);
+  }
+
+  function toolsForHost(host) {
+    if (!host) {
+      return tools.slice();
+    }
+
+    return tools.filter(function (tool) {
+      return supportsHost(tool, host);
+    });
   }
 
   root.toolRegistry = {
     all: tools,
     find: findTool,
-    supportsHost: supportsHost
+    supportsHost: supportsHost,
+    toolsForHost: toolsForHost
   };
 })();

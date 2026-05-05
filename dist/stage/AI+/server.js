@@ -56,13 +56,24 @@ function hasAny(text, words) {
 function fallbackPlan(prompt, context) {
   const text = String(prompt || "").toLowerCase();
   const host = context && context.host ? context.host : "preview";
+  const settings = context && context.settings ? context.settings : {};
+  const attachments = context && Array.isArray(context.attachments) ? context.attachments : [];
+  const attachmentPath = attachments.find((attachment) => attachment && attachment.path);
   const actions = [];
 
-  if (hasAny(text, ["summarize", "summary", "analyze", "project"])) {
+  if (hasAny(text, ["summarize", "summary", "analyze", "analyse", "project"])) {
     actions.push({
       tool: "summarizeProject",
       args: {},
       reason: "Read the current Adobe project before changing it."
+    });
+  }
+
+  if (hasAny(text, ["inspect", "layer", "selected", "expression", "comp"])) {
+    actions.push({
+      tool: "inspectComposition",
+      args: {},
+      reason: "Inspect the active composition and selection."
     });
   }
 
@@ -77,6 +88,20 @@ function fallbackPlan(prompt, context) {
         duration: 8
       },
       reason: "Create a clean composition for the requested sequence."
+    });
+  }
+
+  if (hasAny(text, ["square", "grid", "shape", "box"])) {
+    actions.push({
+      tool: "createShapeGrid",
+      args: {
+        namePrefix: "Square",
+        count: hasAny(text, ["five", "5"]) ? 5 : 6,
+        columns: hasAny(text, ["five", "5"]) ? 5 : 3,
+        size: 140,
+        gap: 26
+      },
+      reason: "Create editable shape layers in the active comp."
     });
   }
 
@@ -95,13 +120,24 @@ function fallbackPlan(prompt, context) {
       args: {
         fontSize: 92,
         fillColor: [0.95, 0.98, 1],
-        justify: "center"
+        justify: "center",
+        preferredFonts: settings.preferredFonts || ""
       },
       reason: "Make the text readable by default."
     });
   }
 
-  if (hasAny(text, ["fade", "animation", "animate", "keyframe"])) {
+  if (hasAny(text, ["reveal", "stagger", "cascade", "offset"])) {
+    actions.push({
+      tool: "cascadeReveal",
+      args: {
+        duration: 0.45,
+        stagger: 0.12,
+        yOffset: 32
+      },
+      reason: "Animate selected layers with a staggered reveal."
+    });
+  } else if (hasAny(text, ["fade", "animation", "animate", "keyframe"])) {
     actions.push({
       tool: "addFadeInOut",
       args: {
@@ -109,6 +145,60 @@ function fallbackPlan(prompt, context) {
         fadeOut: 0.75
       },
       reason: "Animate selected layers with opacity keyframes."
+    });
+  }
+
+  if (hasAny(text, ["easy ease", "ease", "easing", "polish"])) {
+    actions.push({
+      tool: "applyEasyEase",
+      args: {},
+      reason: "Smooth selected keyframes."
+    });
+  }
+
+  if (hasAny(text, ["controller", "null", "rig", "slider", "intensity"])) {
+    actions.push({
+      tool: hasAny(text, ["slider", "intensity"]) ? "createSliderRig" : "addNullController",
+      args: {
+        name: hasAny(text, ["master"]) ? "Master Controller" : "AI+ Control",
+        sliderName: "Intensity",
+        targetProperty: "opacity"
+      },
+      reason: "Add a reusable controller for selected layers."
+    });
+  }
+
+  if (hasAny(text, ["wiggle", "expression", "loop", "bounce"])) {
+    actions.push({
+      tool: "applyExpression",
+      args: {
+        property: "position",
+        expression: hasAny(text, ["loop"]) ? "loopOut(\"cycle\")" : "wiggle(2, 24)"
+      },
+      reason: "Apply a safe expression to the selected property."
+    });
+  }
+
+  if (hasAny(text, ["rename", "clean names", "layer names"])) {
+    actions.push({
+      tool: "normalizeLayerNames",
+      args: {
+        prefix: "AI+ Layer"
+      },
+      reason: "Make selected layer names predictable."
+    });
+  }
+
+  if (hasAny(text, ["reset", "scale 100", "rotation 0"])) {
+    actions.push({
+      tool: "resetTransforms",
+      args: {
+        scale: true,
+        rotation: true,
+        opacity: false,
+        position: false
+      },
+      reason: "Reset selected transform basics."
     });
   }
 
@@ -134,6 +224,29 @@ function fallbackPlan(prompt, context) {
     });
   }
 
+  if (hasAny(text, ["image", "generate", "texture", "sprite", "mood", "reference"])) {
+    actions.push({
+      tool: "generateImageAsset",
+      args: {
+        prompt,
+        ratio: hasAny(text, ["9:16"]) ? "9:16" : "16:9",
+        count: hasAny(text, ["three", "3"]) ? 3 : 1,
+        imageModel: settings.imageModel || "google/nano-banana"
+      },
+      reason: "Prepare a generated visual asset for the project."
+    });
+  }
+
+  if (attachmentPath && hasAny(text, ["attach", "import", "file", "reference", "asset"])) {
+    actions.push({
+      tool: "importAttachmentAsset",
+      args: {
+        path: attachmentPath.path
+      },
+      reason: "Import the attached local file into the project."
+    });
+  }
+
   if (hasAny(text, ["render", "export", "queue"])) {
     actions.push({
       tool: "queueRender",
@@ -148,6 +261,13 @@ function fallbackPlan(prompt, context) {
       args: {},
       reason: "Start with project context for a broad request."
     });
+    if (host === "after-effects" || host === "preview") {
+      actions.push({
+        tool: "inspectComposition",
+        args: {},
+        reason: "Inspect the active comp before choosing edits."
+      });
+    }
   }
 
   return {
@@ -321,10 +441,11 @@ function planSchema(allowedTools) {
 
 async function callOpenAIPlanner(prompt, context, allowedTools) {
   const systemPrompt = [
-    "You are AI+, an Adobe After Effects and Premiere Pro planning agent.",
+    "You are AI+, an Adobe After Effects and Premiere Pro planning agent with Atom-style chat, checkpoint, skill, attachment, image, and MCP workflows.",
     "Return a compact JSON plan that uses only the provided tool names.",
     "Never invent tools. Prefer reversible, small actions. Do not request arbitrary code execution.",
-    "When the request is broad, summarize the project first, then choose safe creative actions."
+    "When the request is broad, summarize and inspect the project first, then choose safe creative actions.",
+    "Use checkpoints through the host panel, not as explicit plan actions unless the user asks for a manual checkpoint."
   ].join(" ");
 
   const response = await fetch(OPENAI_RESPONSES_URL, {

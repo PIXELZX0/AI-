@@ -3,17 +3,51 @@
 
   var root = window.AIPlus || (window.AIPlus = {});
   var storageKey = "ai-plus-provider";
+  var defaults = {
+    provider: "openai",
+    model: "codex",
+    endpoint: "",
+    thinking: "auto",
+    openRouterKey: "",
+    imageModel: "google/nano-banana",
+    preferredFonts: "",
+    confirmReverts: true,
+    notificationSound: false,
+    mcpClaude: false,
+    mcpUrl: false,
+    mcpPort: 8787
+  };
+
+  function mergeSettings(settings) {
+    var merged = {};
+    var key;
+
+    for (key in defaults) {
+      if (defaults.hasOwnProperty(key)) {
+        merged[key] = defaults[key];
+      }
+    }
+
+    settings = settings || {};
+    for (key in settings) {
+      if (settings.hasOwnProperty(key)) {
+        merged[key] = settings[key];
+      }
+    }
+
+    return merged;
+  }
 
   function loadSettings() {
     try {
-      return JSON.parse(localStorage.getItem(storageKey)) || {};
+      return mergeSettings(JSON.parse(localStorage.getItem(storageKey)) || {});
     } catch (error) {
-      return {};
+      return mergeSettings({});
     }
   }
 
   function saveSettings(settings) {
-    localStorage.setItem(storageKey, JSON.stringify(settings || {}));
+    localStorage.setItem(storageKey, JSON.stringify(mergeSettings(settings || {})));
   }
 
   function getEndpointBase() {
@@ -45,6 +79,13 @@
       body: JSON.stringify({
         prompt: prompt,
         context: context,
+        settings: {
+          provider: settings.provider,
+          model: settings.model,
+          thinking: settings.thinking,
+          imageModel: settings.imageModel,
+          preferredFonts: settings.preferredFonts
+        },
         allowedTools: root.toolRegistry.all
       })
     });
@@ -98,6 +139,7 @@
   root.provider = {
     getEndpointBase: getEndpointBase,
     loadSettings: loadSettings,
+    mergeSettings: mergeSettings,
     saveSettings: saveSettings,
     planWithEndpoint: planWithEndpoint,
     fetchNextJob: fetchNextJob,

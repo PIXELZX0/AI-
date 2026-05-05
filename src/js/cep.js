@@ -52,6 +52,29 @@
       });
     }
 
+    if (commandName === "createCheckpoint") {
+      return Promise.resolve({
+        ok: true,
+        mock: true,
+        value: {
+          message: "Preview checkpoint created.",
+          label: payload.label || "Preview checkpoint",
+          path: "preview://" + Date.now()
+        }
+      });
+    }
+
+    if (commandName === "restoreCheckpoint") {
+      return Promise.resolve({
+        ok: true,
+        mock: true,
+        value: {
+          message: "Preview checkpoint restored.",
+          path: payload.path || ""
+        }
+      });
+    }
+
     return Promise.resolve({
       ok: true,
       mock: true,

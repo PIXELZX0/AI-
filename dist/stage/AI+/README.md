@@ -132,7 +132,7 @@ npm run package:zxp
 Output:
 
 ```text
-dist/AIPlus-0.1.0-dev.zxp
+dist/AIPlus-0.2.0-dev.zxp
 ```
 
 For an installer-ready signed ZXP, install `ZXPSignCmd`, then run:
@@ -148,15 +148,26 @@ Stable GitHub releases are created from version tags such as `v0.1.0`. The relea
 ## Current Tools
 
 - `summarizeProject`
+- `inspectComposition`
+- `createCheckpoint`
+- `restoreCheckpoint`
 - `createComposition`
+- `createShapeGrid`
 - `addTextLayer`
 - `applyTextStyle`
 - `addFadeInOut`
+- `cascadeReveal`
+- `applyEasyEase`
 - `addNullController`
+- `createSliderRig`
+- `applyExpression`
 - `normalizeLayerNames`
+- `resetTransforms`
 - `organizeProject`
 - `addMarkers`
 - `queueRender`
+- `generateImageAsset`
+- `importAttachmentAsset`
 
 ## Next Build Targets
 

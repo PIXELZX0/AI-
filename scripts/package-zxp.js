@@ -13,6 +13,7 @@ const stageDir = path.join(stageRoot, "AI+");
 const sign = process.argv.includes("--sign");
 const unsignedZxp = path.join(distDir, "AIPlus-" + version + "-dev.zxp");
 const signedZxp = path.join(distDir, "AIPlus-" + version + ".zxp");
+const manifestPath = path.join(stageDir, "CSXS", "manifest.xml");
 
 const packageEntries = [
   "CSXS",
@@ -78,6 +79,60 @@ function copyEntry(entry) {
       return basename !== ".DS_Store";
     }
   });
+}
+
+function normalizeNumericSegment(segment) {
+  return String(segment).replace(/^0+(?=\d)/, "");
+}
+
+function toAdobeExtensionVersion(rawVersion) {
+  const value = String(rawVersion || "").trim();
+
+  if (!value) {
+    return "0.0.0";
+  }
+
+  const buildIndex = value.indexOf("+");
+  const withoutBuild = buildIndex === -1 ? value : value.slice(0, buildIndex);
+  const buildPart = buildIndex === -1 ? "" : value.slice(buildIndex + 1);
+  const prereleaseIndex = withoutBuild.indexOf("-");
+  const basePart = prereleaseIndex === -1 ? withoutBuild : withoutBuild.slice(0, prereleaseIndex);
+  const prereleasePart = prereleaseIndex === -1 ? "" : withoutBuild.slice(prereleaseIndex + 1);
+  const baseSegments = basePart.split(".");
+
+  if (
+    baseSegments.length === 0 ||
+    baseSegments.length > 4 ||
+    baseSegments.some((segment) => !/^\d+$/.test(segment))
+  ) {
+    throw new Error("Package version must start with one to four numeric dot-separated segments.");
+  }
+
+  const adobeSegments = baseSegments.map(normalizeNumericSegment);
+  const suffixPart = [prereleasePart, buildPart].filter(Boolean).join(".");
+
+  if (suffixPart && adobeSegments.length < 4) {
+    const suffixNumber = suffixPart.match(/\d+/);
+    adobeSegments.push(suffixNumber ? normalizeNumericSegment(suffixNumber[0]) : "0");
+  }
+
+  return adobeSegments.join(".");
+}
+
+function updateManifestVersions(adobeVersion) {
+  if (!fs.existsSync(manifestPath)) {
+    return;
+  }
+
+  const manifest = fs.readFileSync(manifestPath, "utf8");
+  const updatedManifest = manifest
+    .replace(
+      /(<ExtensionManifest\b[^>]*\bExtensionBundleVersion=")[^"]+(")/,
+      "$1" + adobeVersion + "$2"
+    )
+    .replace(/(<Extension\b[^>]*\bVersion=")[^"]+(")/g, "$1" + adobeVersion + "$2");
+
+  fs.writeFileSync(manifestPath, updatedManifest);
 }
 
 function zipStage(outputPath) {
@@ -154,17 +209,34 @@ function signStage() {
   }
 }
 
-resetDir(stageRoot);
-fs.mkdirSync(distDir, {
-  recursive: true
-});
-packageEntries.forEach(copyEntry);
+function main() {
+  resetDir(stageRoot);
+  fs.mkdirSync(distDir, {
+    recursive: true
+  });
+  packageEntries.forEach(copyEntry);
 
-if (sign) {
-  signStage();
-  console.log("Signed ZXP created: " + signedZxp);
-} else {
-  zipStage(unsignedZxp);
-  console.log("Development ZXP archive created: " + unsignedZxp);
-  console.log("For an installer-ready signed ZXP, install ZXPSignCmd and run `npm run package:zxp:signed`.");
+  const adobeVersion = toAdobeExtensionVersion(version);
+  updateManifestVersions(adobeVersion);
+
+  if (adobeVersion !== version) {
+    console.log("CEP manifest installer version: " + adobeVersion + " (from package version " + version + ")");
+  }
+
+  if (sign) {
+    signStage();
+    console.log("Signed ZXP created: " + signedZxp);
+  } else {
+    zipStage(unsignedZxp);
+    console.log("Development ZXP archive created: " + unsignedZxp);
+    console.log("For an installer-ready signed ZXP, install ZXPSignCmd and run `npm run package:zxp:signed`.");
+  }
 }
+
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  toAdobeExtensionVersion
+};

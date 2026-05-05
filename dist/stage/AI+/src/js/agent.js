@@ -24,18 +24,51 @@
     return "preview";
   }
 
-  function fallbackPlan(prompt, context) {
-    var text = String(prompt || "").toLowerCase();
-    var host = context.host;
-    var actions = [];
+  function firstAttachmentPath(context) {
+    var attachments = context && Array.isArray(context.attachments) ? context.attachments : [];
+    var match = attachments.filter(function (attachment) {
+      return attachment && attachment.path;
+    })[0];
+    return match ? match.path : "";
+  }
 
-    if (includesAny(text, ["summarize", "summary", "analyze", "분석", "요약"])) {
+  function addContextReads(actions, text, context) {
+    if (includesAny(text, ["summarize", "summary", "analyze", "analyse", "project", "요약", "분석"])) {
       actions.push({
         tool: "summarizeProject",
         args: {},
         reason: "Collect project context before changing the edit."
       });
     }
+
+    if (includesAny(text, ["inspect", "layer", "expression", "selected", "comp", "컴프", "레이어", "표현식"])) {
+      actions.push({
+        tool: "inspectComposition",
+        args: {},
+        reason: "Read the active composition and selected layers."
+      });
+    }
+
+    if (context && context.skills && context.skills.length) {
+      actions.push({
+        tool: "inspectComposition",
+        args: {
+          focus: "skills"
+        },
+        reason: "Load composition context for the active skill instructions."
+      });
+    }
+  }
+
+  function fallbackPlan(prompt, context) {
+    var text = String(prompt || "").toLowerCase();
+    var host = context.host;
+    var actions = [];
+    var attachmentPath = firstAttachmentPath(context);
+    var settings = context.settings || {};
+    var preferredFonts = settings.preferredFonts || "";
+
+    addContextReads(actions, text, context);
 
     if (includesAny(text, ["intro", "composition", "comp", "cinematic", "인트로", "컴프"])) {
       actions.push({
@@ -48,6 +81,20 @@
           duration: 8
         },
         reason: "Create a clean working composition."
+      });
+    }
+
+    if (includesAny(text, ["square", "grid", "shape", "box", "사각", "그리드", "도형"])) {
+      actions.push({
+        tool: "createShapeGrid",
+        args: {
+          namePrefix: "Square",
+          count: includesAny(text, ["five", "5"]) ? 5 : 6,
+          columns: includesAny(text, ["five", "5"]) ? 5 : 3,
+          size: 140,
+          gap: 26
+        },
+        reason: "Create editable shape layers in the active comp."
       });
     }
 
@@ -65,14 +112,25 @@
         tool: "applyTextStyle",
         args: {
           fontSize: 92,
-          fillColor: [0.95, 0.98, 1],
-          justify: "center"
+          fillColor: [0.95, 0.96, 0.98],
+          justify: "center",
+          preferredFonts: preferredFonts
         },
-        reason: "Give the text a readable default style."
+        reason: "Use a readable default style and preferred fonts when available."
       });
     }
 
-    if (includesAny(text, ["fade", "animation", "animate", "키프레임", "애니메이션", "페이드"])) {
+    if (includesAny(text, ["reveal", "stagger", "cascade", "offset", "캐스케이드", "스태거"])) {
+      actions.push({
+        tool: "cascadeReveal",
+        args: {
+          duration: 0.45,
+          stagger: 0.12,
+          yOffset: 32
+        },
+        reason: "Animate selected layers with a staggered reveal."
+      });
+    } else if (includesAny(text, ["fade", "animation", "animate", "키프레임", "애니메이션", "페이드"])) {
       actions.push({
         tool: "addFadeInOut",
         args: {
@@ -83,13 +141,34 @@
       });
     }
 
-    if (includesAny(text, ["controller", "null", "rig", "컨트롤", "널"])) {
+    if (includesAny(text, ["easy ease", "ease", "easing", "polish", "부드럽", "이징"])) {
       actions.push({
-        tool: "addNullController",
+        tool: "applyEasyEase",
+        args: {},
+        reason: "Smooth selected keyframes."
+      });
+    }
+
+    if (includesAny(text, ["controller", "null", "rig", "slider", "intensity", "컨트롤", "널", "리그", "슬라이더"])) {
+      actions.push({
+        tool: includesAny(text, ["slider", "intensity", "슬라이더"]) ? "createSliderRig" : "addNullController",
         args: {
-          name: "AI+ Control"
+          name: includesAny(text, ["master"]) ? "Master Controller" : "AI+ Control",
+          sliderName: "Intensity",
+          targetProperty: "opacity"
         },
-        reason: "Add a parent control for selected layers."
+        reason: "Add a reusable controller for selected layers."
+      });
+    }
+
+    if (includesAny(text, ["wiggle", "expression", "loop", "bounce", "표현식", "흔들"])) {
+      actions.push({
+        tool: "applyExpression",
+        args: {
+          property: "position",
+          expression: includesAny(text, ["loop"]) ? "loopOut(\"cycle\")" : "wiggle(2, 24)"
+        },
+        reason: "Apply a safe expression to the selected property."
       });
     }
 
@@ -100,6 +179,19 @@
           prefix: "AI+ Layer"
         },
         reason: "Make selected layer names predictable."
+      });
+    }
+
+    if (includesAny(text, ["reset", "scale 100", "rotation 0", "초기화"])) {
+      actions.push({
+        tool: "resetTransforms",
+        args: {
+          scale: true,
+          rotation: true,
+          opacity: false,
+          position: false
+        },
+        reason: "Reset selected transform basics."
       });
     }
 
@@ -125,6 +217,29 @@
       });
     }
 
+    if (includesAny(text, ["image", "generate", "texture", "sprite", "mood", "reference", "이미지", "생성", "텍스처"])) {
+      actions.push({
+        tool: "generateImageAsset",
+        args: {
+          prompt: prompt,
+          ratio: includesAny(text, ["9:16"]) ? "9:16" : "16:9",
+          count: includesAny(text, ["three", "3"]) ? 3 : 1,
+          imageModel: settings.imageModel || "google/nano-banana"
+        },
+        reason: "Prepare a generated visual asset for the project."
+      });
+    }
+
+    if (attachmentPath && includesAny(text, ["attach", "import", "file", "reference", "asset", "첨부", "가져"])) {
+      actions.push({
+        tool: "importAttachmentAsset",
+        args: {
+          path: attachmentPath
+        },
+        reason: "Import the attached local file into the project."
+      });
+    }
+
     if (includesAny(text, ["render", "export", "queue", "출력", "렌더", "익스포트", "내보내기"])) {
       actions.push({
         tool: "queueRender",
@@ -141,14 +256,9 @@
       });
       if (host === "after-effects" || host === "preview") {
         actions.push({
-          tool: "addMarkers",
-          args: {
-            markers: [
-              { time: 0, label: "AI+ start" },
-              { time: 2, label: "AI+ review" }
-            ]
-          },
-          reason: "Leave visible timeline checkpoints for the requested work."
+          tool: "inspectComposition",
+          args: {},
+          reason: "Inspect the active comp before choosing edits."
         });
       }
     }
@@ -159,8 +269,20 @@
     };
   }
 
+  function dedupeActions(actions) {
+    var seen = {};
+    return actions.filter(function (action) {
+      var key = action.tool + ":" + JSON.stringify(action.args || {});
+      if (seen[key]) {
+        return false;
+      }
+      seen[key] = true;
+      return true;
+    });
+  }
+
   function filterUnsupported(actions, host) {
-    return actions.reduce(function (filtered, action) {
+    return dedupeActions(actions).reduce(function (filtered, action) {
       var tool = root.toolRegistry.find(action.tool);
       if (!tool) {
         return filtered;
@@ -176,14 +298,21 @@
     var actions = Array.isArray(plan && plan.actions) ? plan.actions : [];
     return {
       title: plan.title || "AI+ provider plan",
+      source: plan.source || "endpoint",
+      warning: plan.warning || "",
       actions: filterUnsupported(actions, context.host)
     };
   }
 
-  async function createPlan(prompt, hostInfo) {
+  async function createPlan(prompt, hostInfo, options) {
+    var settings = root.provider.loadSettings();
+    var opts = options || {};
     var context = {
       host: normalizeHost(hostInfo),
-      hostInfo: hostInfo || {}
+      hostInfo: hostInfo || {},
+      attachments: opts.attachments || [],
+      skills: opts.skills || [],
+      settings: settings
     };
 
     try {
@@ -195,6 +324,7 @@
       return {
         title: "Provider failed; using built-in planner",
         warning: error.message,
+        source: "fallback",
         actions: fallbackPlan(prompt, context).actions
       };
     }
