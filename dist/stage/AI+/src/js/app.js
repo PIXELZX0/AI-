@@ -26,8 +26,7 @@
     editingMessageId: "",
     drawerTab: "history",
     inspectorTab: "plan",
-    drawerVisible: true,
-    mcpMode: false
+    drawerVisible: false
   };
 
   var nodes = {};
@@ -180,7 +179,7 @@
     state.busy = busy;
     state.cancelRequested = false;
     nodes.planButton.disabled = busy;
-    nodes.runButton.textContent = busy ? "Stop" : "Run";
+    nodes.runButton.textContent = busy ? "Stop" : "Send";
     nodes.runState.textContent = busy ? "Working" : "Idle";
 
     Array.prototype.forEach.call(document.querySelectorAll(".message-run-button"), function (button) {
@@ -288,7 +287,7 @@
 
   function renderMessage(message) {
     var article = document.createElement("article");
-    var label = message.sender || (message.role === "user" ? "You" : "AI+");
+    var label = message.sender || (message.role === "user" ? "You" : "Atom");
     var initials = message.role === "user" ? label.slice(0, 3) : "AI";
     var body = "<div class=\"avatar\">" + escapeHtml(initials) + "</div>" +
       "<div class=\"bubble\">" +
@@ -316,8 +315,8 @@
 
     if (message.checkpoint) {
       body += "<div class=\"message-result\"><button class=\"checkpoint-row\" type=\"button\" data-action=\"restore-checkpoint\" data-checkpoint-id=\"" + message.checkpoint.id + "\">" +
-        "<strong>" + escapeHtml(message.checkpoint.label) + "</strong>" +
-        "<span class=\"item-meta\">" + escapeHtml(message.checkpoint.path || "checkpoint") + "</span>" +
+        "<strong>Current checkpoint ✓</strong>" +
+        "<span class=\"item-meta\">" + escapeHtml(message.checkpoint.label || message.checkpoint.path || "checkpoint") + "</span>" +
         "</button></div>";
     }
 
@@ -345,7 +344,7 @@
         role: "assistant",
         text: "Ready.",
         time: new Date().toISOString(),
-        sender: "AI+"
+        sender: "Atom"
       });
       return;
     }
@@ -488,7 +487,6 @@
     nodes.hostLabel.textContent = label;
     nodes.hostMetric.textContent = normalized.replace("-", " ");
     nodes.modeMetric.textContent = mode;
-    nodes.licensePill.textContent = settings.provider === "endpoint" ? "Local bridge" : "Local trial";
   }
 
   async function refreshHost() {
@@ -570,7 +568,7 @@
 
   async function createCheckpoint(label, visible) {
     var result = await root.cep.runHostCommand("createCheckpoint", {
-      label: label || "AI+ checkpoint",
+      label: label || "Atom checkpoint",
       visible: visible !== false
     });
 
@@ -587,7 +585,7 @@
     var value = result.value || {};
     var checkpoint = {
       id: uid("checkpoint"),
-      label: value.label || label || "AI+ checkpoint",
+      label: value.label || label || "Atom checkpoint",
       path: value.path || "",
       createdAt: new Date().toISOString(),
       visible: visible !== false
@@ -837,6 +835,7 @@
     var settings = root.provider.loadSettings();
     nodes.providerSelect.value = settings.provider || "openai";
     nodes.modelInput.value = settings.model || "";
+    nodes.thinkingSelect.value = settings.thinking || "auto";
     nodes.endpointInput.value = settings.endpoint || "";
     nodes.openRouterInput.value = settings.openRouterKey || "";
     nodes.imageModelSelect.value = settings.imageModel || "google/nano-banana";
@@ -846,6 +845,7 @@
     nodes.notificationSoundInput.checked = Boolean(settings.notificationSound);
     nodes.mcpClaudeInput.checked = Boolean(settings.mcpClaude);
     nodes.mcpUrlInput.checked = Boolean(settings.mcpUrl);
+    updateMcpSettingsUi();
     nodes.settingsDialog.showModal();
   }
 
@@ -868,21 +868,15 @@
     root.provider.saveSettings(settings);
     state.settings = settings;
     updateHostUi();
-    updateMcpOverlay();
+    updateMcpSettingsUi();
     startJobPolling();
     addLog("settings", "Settings saved.");
+    nodes.settingsDialog.close();
   }
 
   function quickSaveComposerSettings() {
     var settings = root.provider.loadSettings();
     settings.thinking = nodes.thinkingSelect.value;
-    if (nodes.modelSelect.value === "endpoint") {
-      settings.provider = "endpoint";
-    } else if (nodes.modelSelect.value === "claude") {
-      settings.provider = "anthropic";
-    } else {
-      settings.provider = "openai";
-    }
     root.provider.saveSettings(settings);
     updateHostUi();
   }
@@ -1086,8 +1080,12 @@
     Array.prototype.forEach.call(document.querySelectorAll("[data-drawer-tab]"), function (button) {
       button.classList.toggle("active", button.getAttribute("data-drawer-tab") === tab);
     });
-    nodes.historyView.classList.toggle("hidden", tab !== "history");
-    nodes.skillsView.classList.toggle("hidden", tab !== "skills");
+    if (nodes.historyView) {
+      nodes.historyView.classList.toggle("hidden", tab !== "history");
+    }
+    if (nodes.skillsView && nodes.skillsView.closest("#drawerPanel")) {
+      nodes.skillsView.classList.toggle("hidden", tab !== "skills");
+    }
   }
 
   function setInspectorTab(tab) {
@@ -1102,7 +1100,13 @@
 
   function toggleHistory() {
     state.drawerVisible = !state.drawerVisible;
-    nodes.drawerPanel.style.display = state.drawerVisible ? "" : "none";
+    syncDrawerUi();
+  }
+
+  function syncDrawerUi() {
+    nodes.drawerPanel.classList.toggle("open", state.drawerVisible);
+    nodes.drawerPanel.setAttribute("aria-hidden", state.drawerVisible ? "false" : "true");
+    nodes.historyButton.classList.toggle("active", state.drawerVisible);
   }
 
   function mcpUrl() {
@@ -1114,18 +1118,8 @@
     return "http://127.0.0.1:" + (settings.mcpPort || 8787) + "/mcp";
   }
 
-  function updateMcpOverlay() {
-    var settings = root.provider.loadSettings();
-    var enabled = state.mcpMode || settings.mcpClaude || settings.mcpUrl;
+  function updateMcpSettingsUi() {
     nodes.mcpUrlLabel.textContent = mcpUrl();
-    nodes.mcpOverlay.classList.toggle("hidden", !enabled);
-    nodes.mcpModeButton.classList.toggle("active", enabled);
-  }
-
-  function toggleMcpMode() {
-    state.mcpMode = !state.mcpMode;
-    updateMcpOverlay();
-    addLog("mcp", state.mcpMode ? "MCP mode enabled." : "MCP mode disabled.");
   }
 
   function handleMessageClick(event) {
@@ -1192,27 +1186,19 @@
     nodes.clearButton.addEventListener("click", clearActivity);
     nodes.copyPlanButton.addEventListener("click", copyPlan);
     nodes.settingsButton.addEventListener("click", openSettings);
+    nodes.configButton.addEventListener("click", openSettings);
+    nodes.closeSettingsButton.addEventListener("click", function () {
+      nodes.settingsDialog.close();
+    });
     nodes.saveSettingsButton.addEventListener("click", saveSettings);
     nodes.newChatButton.addEventListener("click", startNewChat);
     nodes.historyButton.addEventListener("click", toggleHistory);
-    nodes.mcpModeButton.addEventListener("click", toggleMcpMode);
-    nodes.leaveMcpButton.addEventListener("click", function () {
-      state.mcpMode = false;
-      var settings = root.provider.loadSettings();
-      settings.mcpClaude = false;
-      settings.mcpUrl = false;
-      root.provider.saveSettings(settings);
-      updateMcpOverlay();
-    });
     nodes.copyMcpUrlButton.addEventListener("click", function () {
       writeClipboard(mcpUrl(), "MCP URL copied.");
     });
     nodes.checkpointButton.addEventListener("click", function () {
       createCheckpoint("Manual checkpoint", true);
     });
-
-    nodes.thinkingSelect.addEventListener("change", quickSaveComposerSettings);
-    nodes.modelSelect.addEventListener("change", quickSaveComposerSettings);
 
     nodes.promptInput.addEventListener("input", function () {
       resizeComposer();
@@ -1307,7 +1293,6 @@
   function syncComposerControls() {
     var settings = root.provider.loadSettings();
     nodes.thinkingSelect.value = settings.thinking || "auto";
-    nodes.modelSelect.value = settings.provider === "endpoint" ? "endpoint" : (settings.provider === "anthropic" ? "claude" : "codex");
   }
 
   function initNodes() {
@@ -1325,15 +1310,15 @@
       "runState",
       "copyPlanButton",
       "settingsButton",
+      "configButton",
       "settingsDialog",
+      "closeSettingsButton",
       "endpointInput",
       "saveSettingsButton",
       "messageList",
       "composerForm",
-      "licensePill",
       "newChatButton",
       "historyButton",
-      "mcpModeButton",
       "drawerPanel",
       "historyView",
       "skillsView",
@@ -1345,16 +1330,13 @@
       "skillScopeInput",
       "skillInstructionInput",
       "chatPanel",
-      "mcpOverlay",
       "mcpUrlLabel",
       "copyMcpUrlButton",
-      "leaveMcpButton",
       "attachmentList",
       "fileInput",
       "attachButton",
       "skillMenu",
       "thinkingSelect",
-      "modelSelect",
       "planPane",
       "checkpointPane",
       "activityPane",
@@ -1390,7 +1372,8 @@
     renderPlan(null);
     setDrawerTab("history");
     setInspectorTab("plan");
-    updateMcpOverlay();
+    syncDrawerUi();
+    updateMcpSettingsUi();
     refreshHost().then(function () {
       startJobPolling();
     });

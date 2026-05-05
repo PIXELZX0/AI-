@@ -1,6 +1,6 @@
 {
   "name": "ai-plus-adobe-panel",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "AI+ Adobe After Effects and Premiere Pro panel scaffold.",
   "scripts": {

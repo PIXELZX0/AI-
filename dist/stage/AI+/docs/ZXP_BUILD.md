@@ -11,7 +11,7 @@ npm run package:zxp
 This creates:
 
 ```text
-dist/AIPlus-0.2.1-dev.zxp
+dist/AIPlus-0.2.2-dev.zxp
 ```
 
 This file is a development archive with the correct CEP extension contents. Some Adobe extension installers require a signed ZXP and may reject it.
@@ -39,7 +39,7 @@ ZXP_SIGN_CMD=/path/to/ZXPSignCmd npm run package:zxp:signed
 Signed output:
 
 ```text
-dist/AIPlus-0.2.1.zxp
+dist/AIPlus-0.2.2.zxp
 ```
 
 ## Installer Version Mapping
@@ -50,6 +50,6 @@ For example, `2026.5.5-1` is packaged into the manifest as `2026.5.5.1`. This pr
 
 ## GitHub Release Automation
 
-`.github/workflows/release-zxp.yml` packages a ZXP automatically when a GitHub release is published or when a version tag such as `v0.1.0` is pushed.
+`.github/workflows/release-zxp.yml` packages a signed ZXP automatically when a GitHub release is published or when a version tag such as `v0.1.0` is pushed.
 
-The workflow runs on `blacksmith-2vcpu-ubuntu-2404`, checks that the release tag matches `package.json`, runs the JavaScript syntax check, creates `dist/AIPlus-<version>-dev.zxp`, and stores it as a workflow artifact. Stable tag releases prefer an existing signed `dist/AIPlus-<version>.zxp` artifact when one is present, falling back to the development ZXP otherwise.
+The workflow runs on `macos-latest`, checks that the release tag matches `package.json`, runs the JavaScript syntax check, installs a `ZXPSignCmd` provider, creates `dist/AIPlus-<version>.zxp`, verifies the signature, and stores that signed ZXP as the workflow artifact. Stable tag releases upload the signed ZXP to the GitHub release.
