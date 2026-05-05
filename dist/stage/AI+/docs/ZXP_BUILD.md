@@ -11,7 +11,7 @@ npm run package:zxp
 This creates:
 
 ```text
-dist/AIPlus-0.2.0-dev.zxp
+dist/AIPlus-0.2.1-dev.zxp
 ```
 
 This file is a development archive with the correct CEP extension contents. Some Adobe extension installers require a signed ZXP and may reject it.
@@ -39,7 +39,7 @@ ZXP_SIGN_CMD=/path/to/ZXPSignCmd npm run package:zxp:signed
 Signed output:
 
 ```text
-dist/AIPlus-0.2.0.zxp
+dist/AIPlus-0.2.1.zxp
 ```
 
 ## Installer Version Mapping

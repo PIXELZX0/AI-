@@ -1,14 +1,16 @@
 {
   "name": "ai-plus-adobe-panel",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "AI+ Adobe After Effects and Premiere Pro panel scaffold.",
   "scripts": {
     "planner": "node server.js",
     "mcp": "node mcp-server.js",
+    "check:cep": "node scripts/install-cep-dev.js --check",
+    "install:cep": "node scripts/install-cep-dev.js",
     "package:zxp": "node scripts/package-zxp.js",
     "package:zxp:signed": "node scripts/package-zxp.js --sign",
-    "check": "node --check server.js && node --check mcp-server.js && node --check src/node/tools.cjs && node --check src/js/cep.js && node --check src/js/toolRegistry.js && node --check src/js/provider.js && node --check src/js/agent.js && node --check src/js/app.js"
+    "check": "node --check server.js && node --check mcp-server.js && node --check scripts/install-cep-dev.js && node --check src/node/tools.cjs && node --check src/js/cep.js && node --check src/js/toolRegistry.js && node --check src/js/provider.js && node --check src/js/agent.js && node --check src/js/app.js"
   },
   "engines": {
     "node": ">=18"

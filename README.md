@@ -27,18 +27,32 @@ That gives the AI room to grow while keeping destructive behavior behind explici
 
 ## Install For Local Adobe Testing
 
-Copy or symlink this folder into the CEP extensions directory:
+Check whether Adobe can discover the local CEP panel:
 
 ```sh
-~/Library/Application Support/Adobe/CEP/extensions/AI+
+npm run check:cep
 ```
 
-During development, enable unsigned CEP extensions:
+Install the local development panel by symlinking this folder into the CEP extensions directory:
+
+```sh
+npm run install:cep
+```
+
+Unsigned CEP extensions are blocked by default. To allow this local development panel, explicitly enable Adobe's `PlayerDebugMode`:
+
+```sh
+npm run install:cep -- --enable-unsigned
+```
+
+That command writes the equivalent of:
 
 ```sh
 defaults write com.adobe.CSXS.11 PlayerDebugMode 1
 defaults write com.adobe.CSXS.12 PlayerDebugMode 1
 defaults write com.adobe.CSXS.13 PlayerDebugMode 1
+defaults write com.adobe.CSXS.14 PlayerDebugMode 1
+defaults write com.adobe.CSXS.15 PlayerDebugMode 1
 ```
 
 Restart After Effects or Premiere Pro, then open `Window > Extensions > AI+`.
@@ -132,7 +146,7 @@ npm run package:zxp
 Output:
 
 ```text
-dist/AIPlus-0.2.0-dev.zxp
+dist/AIPlus-0.2.1-dev.zxp
 ```
 
 For an installer-ready signed ZXP, install `ZXPSignCmd`, then run:
