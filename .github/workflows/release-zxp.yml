@@ -18,7 +18,7 @@ concurrency:
 jobs:
   package-zxp:
     name: Package ZXP
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    runs-on: macos-latest
 
     steps:
       - name: Checkout release ref
@@ -52,7 +52,11 @@ jobs:
       - name: Install ZXP signing tool
         run: |
           npm install --no-save zxp-signer@1.0.6
-          zxp_sign_cmd="$(node -e "console.log(require('zxp-signer')())")"
+          zxp_sign_cmd="$(node - <<'NODE'
+          const zxpSigner = require("zxp-signer");
+          console.log(String(zxpSigner()).replace(/^"|"$/g, ""));
+          NODE
+          )"
           chmod +x "$zxp_sign_cmd"
           echo "ZXP_SIGN_CMD=$zxp_sign_cmd" >> "$GITHUB_ENV"
 

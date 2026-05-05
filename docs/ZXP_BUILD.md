@@ -52,4 +52,4 @@ For example, `2026.5.5-1` is packaged into the manifest as `2026.5.5.1`. This pr
 
 `.github/workflows/release-zxp.yml` packages a signed ZXP automatically when a GitHub release is published or when a version tag such as `v0.1.0` is pushed.
 
-The workflow runs on `blacksmith-2vcpu-ubuntu-2404`, checks that the release tag matches `package.json`, runs the JavaScript syntax check, installs a Linux `ZXPSignCmd` provider, creates `dist/AIPlus-<version>.zxp`, verifies the signature, and stores that signed ZXP as the workflow artifact. Stable tag releases upload the signed ZXP to the GitHub release.
+The workflow runs on `macos-latest`, checks that the release tag matches `package.json`, runs the JavaScript syntax check, installs a `ZXPSignCmd` provider, creates `dist/AIPlus-<version>.zxp`, verifies the signature, and stores that signed ZXP as the workflow artifact. Stable tag releases upload the signed ZXP to the GitHub release.
