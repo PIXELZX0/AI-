@@ -1,5 +1,3 @@
-#targetengine "AIPlus"
-
 var AIPlusHost = AIPlusHost || {};
 
 (function () {

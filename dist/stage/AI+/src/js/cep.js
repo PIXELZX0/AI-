@@ -24,10 +24,6 @@
     });
   }
 
-  function withHostEngine(source) {
-    return "#targetengine \"AIPlus\"\n" + source;
-  }
-
   function hostScriptPath() {
     if (!window.__adobe_cep__.getSystemPath) {
       return "";
@@ -52,6 +48,19 @@
     }
   }
 
+  function hostResponseStringifierSource() {
+    return "function s(v){try{if(typeof JSON !== 'undefined' && JSON.stringify){return JSON.stringify(v);}}catch(e){}return '{\"ok\":false,\"error\":\"Unable to stringify host loader response.\"}';}";
+  }
+
+  function hostLoaderSource(path) {
+    return "if (typeof AIPlusHost === 'undefined' || !AIPlusHost.run) {" +
+      "$.evalFile(new File('" + escapeForExtendScript(path) + "'));" +
+      "}" +
+      "if (typeof AIPlusHost === 'undefined' || !AIPlusHost.run) {" +
+      "return s({ok:false, error:'AIPlusHost.run was not defined after loading host/jsx/ai-plus.jsx.'});" +
+      "}";
+  }
+
   async function ensureHostScript() {
     var path;
     var script;
@@ -73,16 +82,15 @@
     }
 
     script = "(function () {" +
-      "function s(v){try{return JSON.stringify(v);}catch(e){return '{\"ok\":false,\"error\":\"Unable to stringify host loader response.\"}';}}" +
+      hostResponseStringifierSource() +
       "try {" +
       "if (typeof AIPlusHost !== 'undefined' && AIPlusHost.run) { return s({ok:true, alreadyLoaded:true}); }" +
-      "$.evalFile(new File('" + escapeForExtendScript(path) + "'));" +
-      "if (typeof AIPlusHost !== 'undefined' && AIPlusHost.run) { return s({ok:true, loaded:true}); }" +
-      "return s({ok:false, error:'AIPlusHost.run was not defined after loading host/jsx/ai-plus.jsx.'});" +
+      hostLoaderSource(path) +
+      "return s({ok:true, loaded:true});" +
       "} catch (e) { return s({ok:false, error:e && e.message ? e.message : String(e)}); }" +
       "}())";
 
-    raw = await evalScript(withHostEngine(script));
+    raw = await evalScript(script);
     result = parseHostJson(raw, "Host script loader returned a non-JSON response");
     hostScriptLoaded = Boolean(result.ok);
     return result;
@@ -151,6 +159,7 @@
 
   async function runHostCommand(commandName, payload) {
     var ready;
+    var path;
     var request;
     var script;
     var raw;
@@ -164,12 +173,26 @@
       return ready;
     }
 
+    path = hostScriptPath();
+    if (!path) {
+      return {
+        ok: false,
+        error: "Unable to resolve the AI+ host script path."
+      };
+    }
+
     request = JSON.stringify({
       command: commandName,
       payload: payload || {}
     });
-    script = "AIPlusHost.run('" + escapeForExtendScript(request) + "')";
-    raw = await evalScript(withHostEngine(script));
+    script = "(function () {" +
+      hostResponseStringifierSource() +
+      "try {" +
+      hostLoaderSource(path) +
+      "return AIPlusHost.run('" + escapeForExtendScript(request) + "');" +
+      "} catch (e) { return s({ok:false, error:e && e.message ? e.message : String(e)}); }" +
+      "}())";
+    raw = await evalScript(script);
 
     return parseHostJson(raw, "Host returned a non-JSON response");
   }
