@@ -1,8 +1,8 @@
 {
   "name": "ai-plus-adobe-panel",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
-  "description": "AI+ Adobe After Effects and Premiere Pro panel scaffold.",
+  "description": "AI+ Adobe After Effects, Premiere Pro, and Illustrator panel scaffold.",
   "scripts": {
     "planner": "node server.js",
     "mcp": "node mcp-server.js",

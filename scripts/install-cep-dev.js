@@ -163,7 +163,7 @@ function main() {
     console.log("Unsigned CEP loading was not changed.");
     console.log("For local unsigned development, run:");
     console.log("  npm run install:cep -- --enable-unsigned");
-    console.log("Restart After Effects after changing CEP install or debug settings.");
+    console.log("Restart After Effects, Premiere Pro, or Illustrator after changing CEP install or debug settings.");
   }
 }
 

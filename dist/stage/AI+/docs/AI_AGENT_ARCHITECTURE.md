@@ -11,7 +11,7 @@ flowchart LR
   Panel --> Planner[Planner or local server]
   Planner --> Registry[Tool registry]
   Registry --> Bridge[ExtendScript bridge]
-  Bridge --> Adobe[After Effects / Premiere Pro]
+  Bridge --> Adobe[After Effects / Premiere Pro / Illustrator]
   Adobe --> Log[Run log]
 ```
 
@@ -31,7 +31,7 @@ Stores the optional local planner endpoint and sends prompt/context/tool metadat
 
 `server.js`
 
-Runs a localhost-only planner endpoint and Adobe job queue. It uses OpenAI when `OPENAI_API_KEY` and `AI_PLUS_MODEL` are set, then falls back to deterministic planning if the model call fails or is not configured.
+Runs a localhost-only planner endpoint and Adobe job queue. It can call Codex CLI for JSON planning when the panel provider is `Codex CLI`, can use OpenAI when `OPENAI_API_KEY` and `AI_PLUS_MODEL` are set, then falls back to deterministic planning if a model call fails or is not configured.
 
 `mcp-server.js`
 
@@ -47,7 +47,7 @@ Wraps `window.__adobe_cep__.evalScript` and provides browser-preview fallback be
 
 `host/jsx/ai-plus.jsx`
 
-Executes actions inside Adobe apps. This is the only layer that touches After Effects or Premiere Pro project state.
+Executes actions inside Adobe apps. This is the only layer that touches After Effects, Premiere Pro, or Illustrator project/document state.
 
 ## Plan Format
 
@@ -72,6 +72,7 @@ Executes actions inside Adobe apps. This is the only layer that touches After Ef
 - no unknown tools execute
 - host-incompatible tools are filtered out
 - After Effects write operations are wrapped in one undo group
+- Illustrator actions are limited to registered document, artboard, vector, text, placement, and export tools
 - host responses are returned as JSON
 - provider output is treated as untrusted input
 

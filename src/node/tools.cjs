@@ -4,8 +4,8 @@ const tools = [
   {
     id: "summarizeProject",
     label: "Project summary",
-    description: "Read the active Adobe project and return editable context.",
-    hosts: ["after-effects", "premiere-pro", "preview"],
+    description: "Read the active Adobe project or document and return editable context.",
+    hosts: ["after-effects", "premiere-pro", "illustrator", "preview"],
     risk: "read"
   },
   {
@@ -14,6 +14,20 @@ const tools = [
     description: "Read layers, properties, expressions, markers, and selection from the active comp.",
     hosts: ["after-effects", "preview"],
     risk: "read"
+  },
+  {
+    id: "inspectIllustratorDocument",
+    label: "Inspect Illustrator",
+    description: "Read artboards, layers, page items, and selection from the active Illustrator document.",
+    hosts: ["illustrator", "preview"],
+    risk: "read"
+  },
+  {
+    id: "createIllustratorDocument",
+    label: "Create Illustrator document",
+    description: "Create a new Illustrator document with a safe artboard size and color space.",
+    hosts: ["illustrator", "preview"],
+    risk: "write"
   },
   {
     id: "createCheckpoint",
@@ -44,6 +58,13 @@ const tools = [
     risk: "write"
   },
   {
+    id: "createIllustratorShapeGrid",
+    label: "Create vector grid",
+    description: "Create editable Illustrator rectangle objects arranged on the active artboard.",
+    hosts: ["illustrator", "preview"],
+    risk: "write"
+  },
+  {
     id: "addTextLayer",
     label: "Add text",
     description: "Add editable text to the active composition.",
@@ -51,10 +72,24 @@ const tools = [
     risk: "write"
   },
   {
+    id: "addIllustratorText",
+    label: "Add Illustrator text",
+    description: "Add editable text to the active Illustrator artboard.",
+    hosts: ["illustrator", "preview"],
+    risk: "write"
+  },
+  {
     id: "applyTextStyle",
     label: "Style text",
     description: "Apply font size, fill color, alignment, and preferred font to selected text.",
     hosts: ["after-effects", "preview"],
+    risk: "write"
+  },
+  {
+    id: "applyIllustratorTextStyle",
+    label: "Style Illustrator text",
+    description: "Apply font size, fill color, alignment, and preferred font to selected Illustrator text.",
+    hosts: ["illustrator", "preview"],
     risk: "write"
   },
   {
@@ -116,8 +151,8 @@ const tools = [
   {
     id: "organizeProject",
     label: "Organize project",
-    description: "Create bins or folders and move obvious items into them.",
-    hosts: ["after-effects", "premiere-pro", "preview"],
+    description: "Create bins, folders, or layers and move obvious items into them when supported.",
+    hosts: ["after-effects", "premiere-pro", "illustrator", "preview"],
     risk: "write"
   },
   {
@@ -130,22 +165,36 @@ const tools = [
   {
     id: "queueRender",
     label: "Queue export",
-    description: "Queue the active composition or sequence for render/export.",
-    hosts: ["after-effects", "premiere-pro", "preview"],
+    description: "Queue or export the active composition, sequence, or document.",
+    hosts: ["after-effects", "premiere-pro", "illustrator", "preview"],
+    risk: "write"
+  },
+  {
+    id: "normalizeIllustratorObjectNames",
+    label: "Rename Illustrator objects",
+    description: "Rename selected Illustrator objects with clean numbered labels.",
+    hosts: ["illustrator", "preview"],
+    risk: "write"
+  },
+  {
+    id: "exportIllustratorPng",
+    label: "Export Illustrator PNG",
+    description: "Export the active Illustrator document to a PNG file.",
+    hosts: ["illustrator", "preview"],
     risk: "write"
   },
   {
     id: "generateImageAsset",
     label: "Image asset",
-    description: "Prepare an image-generation request and auto-import a generated or placeholder asset.",
-    hosts: ["after-effects", "preview"],
+    description: "Prepare an image-generation request and auto-import or place a generated or placeholder asset.",
+    hosts: ["after-effects", "illustrator", "preview"],
     risk: "write"
   },
   {
     id: "importAttachmentAsset",
     label: "Import attachment",
-    description: "Import an attached local file into the After Effects project.",
-    hosts: ["after-effects", "preview"],
+    description: "Import or place an attached local file into the active Adobe project or document.",
+    hosts: ["after-effects", "illustrator", "preview"],
     risk: "write"
   }
 ];

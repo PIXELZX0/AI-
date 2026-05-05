@@ -68,6 +68,9 @@ var AIPlusHost = AIPlusHost || {};
     if (name.indexOf("premiere") !== -1) {
       return "premiere-pro";
     }
+    if (name.indexOf("illustrator") !== -1) {
+      return "illustrator";
+    }
     return "unknown";
   }
 
@@ -85,6 +88,10 @@ var AIPlusHost = AIPlusHost || {};
 
   function isPremiere() {
     return getHostKey() === "premiere-pro";
+  }
+
+  function isIllustrator() {
+    return getHostKey() === "illustrator";
   }
 
   function activeAeComp() {
@@ -108,6 +115,119 @@ var AIPlusHost = AIPlusHost || {};
       throw new Error("No active Premiere Pro sequence found.");
     }
     return app.project.activeSequence;
+  }
+
+  function activeIllustratorDocument() {
+    if (!isIllustrator()) {
+      throw new Error("This tool requires Illustrator.");
+    }
+    if (!app.documents || app.documents.length < 1) {
+      throw new Error("No Illustrator document is open.");
+    }
+    return app.activeDocument;
+  }
+
+  function getIllustratorDocumentName(doc) {
+    try {
+      return doc.name || "Untitled";
+    } catch (nameError) {
+      return "Untitled";
+    }
+  }
+
+  function getIllustratorArtboardBounds(doc) {
+    var index = 0;
+    var rect;
+
+    try {
+      index = doc.artboards.getActiveArtboardIndex();
+    } catch (indexError) {
+      index = 0;
+    }
+
+    rect = doc.artboards[index].artboardRect;
+    return {
+      index: index,
+      left: rect[0],
+      top: rect[1],
+      right: rect[2],
+      bottom: rect[3],
+      width: rect[2] - rect[0],
+      height: rect[1] - rect[3]
+    };
+  }
+
+  function illustratorArtboardSummary(doc, index) {
+    var artboard = doc.artboards[index];
+    var rect = artboard.artboardRect;
+    return {
+      index: index + 1,
+      name: artboard.name || "Artboard " + (index + 1),
+      left: rect[0],
+      top: rect[1],
+      width: rect[2] - rect[0],
+      height: rect[1] - rect[3]
+    };
+  }
+
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function colorChannel(value) {
+    var number = Number(value);
+    if (isNaN(number)) {
+      return 0;
+    }
+    if (number >= 0 && number <= 1) {
+      return clamp(Math.round(number * 255), 0, 255);
+    }
+    return clamp(Math.round(number), 0, 255);
+  }
+
+  function illustratorRgbColor(value, fallback) {
+    var source = value || fallback || [44, 116, 179];
+    var color = new RGBColor();
+
+    if (source instanceof Array) {
+      color.red = colorChannel(source[0]);
+      color.green = colorChannel(source[1]);
+      color.blue = colorChannel(source[2]);
+      return color;
+    }
+
+    color.red = colorChannel(source.red);
+    color.green = colorChannel(source.green);
+    color.blue = colorChannel(source.blue);
+    return color;
+  }
+
+  function findIllustratorLayer(doc, name) {
+    var i;
+    for (i = 0; i < doc.layers.length; i += 1) {
+      if (doc.layers[i].name === name) {
+        return doc.layers[i];
+      }
+    }
+    return null;
+  }
+
+  function findOrCreateIllustratorLayer(doc, name) {
+    var layer = findIllustratorLayer(doc, name);
+    if (layer) {
+      return layer;
+    }
+    layer = doc.layers.add();
+    layer.name = name;
+    return layer;
+  }
+
+  function ensureIllustratorDocument(args) {
+    if (app.documents && app.documents.length > 0) {
+      return app.activeDocument;
+    }
+    createIllustratorDocument(args || {});
+    return app.activeDocument;
   }
 
   function summarizeProject() {
@@ -134,6 +254,19 @@ var AIPlusHost = AIPlusHost || {};
     if (isPremiere() && app.project) {
       summary.active = app.project.activeSequence ? app.project.activeSequence.name : "";
       summary.items = app.project.rootItem ? app.project.rootItem.children.numItems : 0;
+    }
+
+    if (isIllustrator() && app.documents && app.documents.length > 0) {
+      var doc = app.activeDocument;
+      var artboard = getIllustratorArtboardBounds(doc);
+      summary.name = getIllustratorDocumentName(doc);
+      summary.items = doc.pageItems ? doc.pageItems.length : 0;
+      summary.active = doc.artboards && doc.artboards.length ? doc.artboards[artboard.index].name : "";
+      summary.selectedLayers = doc.selection ? doc.selection.length : 0;
+      summary.layers = doc.layers ? doc.layers.length : 0;
+      summary.artboards = doc.artboards ? doc.artboards.length : 0;
+      summary.width = artboard.width;
+      summary.height = artboard.height;
     }
 
     return {
@@ -705,12 +838,417 @@ var AIPlusHost = AIPlusHost || {};
     };
   }
 
+  function inspectIllustratorDocument(args) {
+    var doc = activeIllustratorDocument();
+    var artboards = [];
+    var layers = [];
+    var selectedItems = [];
+    var selection = doc.selection || [];
+    var maxItems = Math.max(1, Math.min(args && args.maxItems ? args.maxItems : 80, 200));
+    var maxLayers = Math.max(1, Math.min(args && args.maxLayers ? args.maxLayers : 80, 200));
+    var i;
+
+    for (i = 0; i < doc.artboards.length; i += 1) {
+      artboards.push(illustratorArtboardSummary(doc, i));
+    }
+
+    for (i = 0; i < doc.layers.length && i < maxLayers; i += 1) {
+      layers.push({
+        index: i + 1,
+        name: doc.layers[i].name,
+        visible: doc.layers[i].visible,
+        locked: doc.layers[i].locked,
+        pageItems: doc.layers[i].pageItems ? doc.layers[i].pageItems.length : 0
+      });
+    }
+
+    for (i = 0; i < selection.length && i < maxItems; i += 1) {
+      selectedItems.push({
+        index: i + 1,
+        name: selection[i].name || "",
+        type: selection[i].typename || "",
+        locked: selection[i].locked || false,
+        hidden: selection[i].hidden || false,
+        width: selection[i].width || 0,
+        height: selection[i].height || 0
+      });
+    }
+
+    return {
+      message: "Inspected Illustrator document: " + getIllustratorDocumentName(doc) + " (" + selection.length + " selected item(s)).",
+      document: {
+        name: getIllustratorDocumentName(doc),
+        colorSpace: String(doc.documentColorSpace || ""),
+        artboardCount: doc.artboards.length,
+        layerCount: doc.layers.length,
+        pageItemCount: doc.pageItems ? doc.pageItems.length : 0,
+        selectedItems: selection.length,
+        artboards: artboards,
+        layers: layers,
+        selection: selectedItems
+      }
+    };
+  }
+
+  function createIllustratorDocument(args) {
+    var name = args && args.name ? args.name : "AI+ Illustrator Document";
+    var width = Math.max(1, Number(args && args.width ? args.width : 1080));
+    var height = Math.max(1, Number(args && args.height ? args.height : 1080));
+    var colorSpaceName = String(args && args.colorSpace ? args.colorSpace : "rgb").toLowerCase();
+    var colorSpace = colorSpaceName === "cmyk" ? DocumentColorSpace.CMYK : DocumentColorSpace.RGB;
+    var doc = app.documents.add(colorSpace, width, height);
+
+    try {
+      doc.artboards[0].name = name;
+    } catch (artboardNameError) {
+    }
+
+    try {
+      doc.activeLayer.name = "01 Artwork";
+    } catch (layerNameError) {
+    }
+
+    return {
+      message: "Created Illustrator document: " + name,
+      documentName: getIllustratorDocumentName(doc),
+      artboardName: name,
+      width: width,
+      height: height,
+      colorSpace: colorSpaceName === "cmyk" ? "CMYK" : "RGB"
+    };
+  }
+
+  function createIllustratorShapeGrid(args) {
+    var doc = ensureIllustratorDocument({
+      name: "AI+ Shapes",
+      width: args && args.documentWidth ? args.documentWidth : 1080,
+      height: args && args.documentHeight ? args.documentHeight : 1080
+    });
+    var artboard = getIllustratorArtboardBounds(doc);
+    var count = Math.max(1, Math.min(Number(args && args.count ? args.count : 6), 64));
+    var columns = Math.max(1, Math.min(Number(args && args.columns ? args.columns : count), count));
+    var rows = Math.ceil(count / columns);
+    var size = Math.max(4, Number(args && args.size ? args.size : Math.min(140, artboard.width / Math.max(columns + 1, 2))));
+    var gap = Math.max(0, Number(args && args.gap ? args.gap : Math.round(size * 0.18)));
+    var totalWidth = columns * size + (columns - 1) * gap;
+    var totalHeight = rows * size + (rows - 1) * gap;
+    var startLeft = artboard.left + (artboard.width - totalWidth) / 2;
+    var startTop = artboard.top - (artboard.height - totalHeight) / 2;
+    var prefix = args && args.namePrefix ? args.namePrefix : "AI+ Shape";
+    var layer = findOrCreateIllustratorLayer(doc, args && args.layerName ? args.layerName : "AI+ Shapes");
+    var created = 0;
+    var i;
+
+    doc.activeLayer = layer;
+
+    for (i = 0; i < count; i += 1) {
+      var ratio = count > 1 ? i / (count - 1) : 0;
+      var row = Math.floor(i / columns);
+      var column = i % columns;
+      var rect = doc.pathItems.rectangle(
+        startTop - row * (size + gap),
+        startLeft + column * (size + gap),
+        size,
+        size
+      );
+
+      rect.name = prefix + " " + (i + 1);
+      rect.filled = true;
+      rect.fillColor = args && args.fillColor
+        ? illustratorRgbColor(args.fillColor, [230, 68, 88])
+        : illustratorRgbColor([230 - ratio * 86, 68 + ratio * 78, 88 + ratio * 112]);
+      rect.stroked = !(args && args.stroke === false);
+      if (rect.stroked) {
+        rect.strokeWidth = Number(args && args.strokeWidth ? args.strokeWidth : 1);
+        rect.strokeColor = illustratorRgbColor(args && args.strokeColor ? args.strokeColor : [24, 30, 38]);
+      }
+      created += 1;
+    }
+
+    return {
+      message: "Created " + created + " Illustrator shape(s).",
+      count: created
+    };
+  }
+
+  function styleIllustratorTextFrame(textFrame, args) {
+    var attributes = textFrame.textRange.characterAttributes;
+    var fonts;
+    var i;
+
+    if (args && args.fontSize) {
+      attributes.size = Number(args.fontSize);
+    }
+    if (args && args.fillColor) {
+      attributes.fillColor = illustratorRgbColor(args.fillColor, [28, 31, 36]);
+    }
+    if (args && args.preferredFonts) {
+      fonts = String(args.preferredFonts).split(",");
+      for (i = 0; i < fonts.length; i += 1) {
+        try {
+          if (fonts[i].replace(/\s/g, "")) {
+            attributes.textFont = app.textFonts.getByName(fonts[i].replace(/^\s+|\s+$/g, ""));
+            break;
+          }
+        } catch (fontError) {
+        }
+      }
+    }
+    if (args && args.justify === "center") {
+      try {
+        textFrame.textRange.paragraphAttributes.justification = Justification.CENTER;
+      } catch (justifyError) {
+      }
+    }
+  }
+
+  function addIllustratorText(args) {
+    var doc = ensureIllustratorDocument({
+      name: "AI+ Text",
+      width: args && args.documentWidth ? args.documentWidth : 1080,
+      height: args && args.documentHeight ? args.documentHeight : 1080
+    });
+    var artboard = getIllustratorArtboardBounds(doc);
+    var layer = findOrCreateIllustratorLayer(doc, args && args.layerName ? args.layerName : "AI+ Text");
+    var text;
+    var fontSize = args && args.fontSize ? args.fontSize : Math.max(24, Math.round(artboard.width / 16));
+
+    doc.activeLayer = layer;
+    text = doc.textFrames.add();
+    text.contents = args && args.text ? args.text : "AI+";
+    text.name = args && args.name ? args.name : "AI+ Text";
+    styleIllustratorTextFrame(text, {
+      fontSize: fontSize,
+      fillColor: args && args.fillColor ? args.fillColor : [28, 31, 36],
+      justify: args && args.justify ? args.justify : "center",
+      preferredFonts: args && args.preferredFonts ? args.preferredFonts : ""
+    });
+
+    if (args && args.x !== undefined && args.y !== undefined) {
+      text.position = [Number(args.x), Number(args.y)];
+    } else {
+      text.position = [
+        artboard.left + artboard.width / 2 - text.width / 2,
+        artboard.top - artboard.height / 2 + text.height / 2
+      ];
+    }
+
+    return {
+      message: "Added Illustrator text: " + text.contents,
+      itemName: text.name
+    };
+  }
+
+  function applyIllustratorTextStyle(args) {
+    var doc = activeIllustratorDocument();
+    var selection = doc.selection || [];
+    var count = 0;
+    var i;
+
+    if (!selection.length) {
+      throw new Error("Select at least one Illustrator text object to style.");
+    }
+
+    for (i = 0; i < selection.length; i += 1) {
+      if (selection[i].typename === "TextFrame" || selection[i].textRange) {
+        styleIllustratorTextFrame(selection[i], args || {});
+        count += 1;
+      }
+    }
+
+    if (!count) {
+      throw new Error("Selection does not contain editable Illustrator text.");
+    }
+
+    return {
+      message: "Styled " + count + " Illustrator text object(s)."
+    };
+  }
+
+  function normalizeIllustratorObjectNames(args) {
+    var doc = activeIllustratorDocument();
+    var selection = doc.selection || [];
+    var prefix = args && args.prefix ? args.prefix : "AI+ Object";
+    var i;
+
+    if (!selection.length) {
+      throw new Error("Select Illustrator objects before renaming.");
+    }
+
+    for (i = 0; i < selection.length; i += 1) {
+      selection[i].name = prefix + " " + (i + 1);
+    }
+
+    return {
+      message: "Renamed " + selection.length + " Illustrator object(s)."
+    };
+  }
+
+  function organizeIllustratorDocument() {
+    var doc = ensureIllustratorDocument({
+      name: "AI+ Illustrator Document",
+      width: 1080,
+      height: 1080
+    });
+    var layers = ["01 Artwork", "02 Text", "03 Reference", "04 Exports"];
+    var created = 0;
+    var i;
+
+    for (i = 0; i < layers.length; i += 1) {
+      if (!findIllustratorLayer(doc, layers[i])) {
+        findOrCreateIllustratorLayer(doc, layers[i]);
+        created += 1;
+      }
+    }
+
+    return {
+      message: "Prepared Illustrator document layers; created " + created + " layer(s)."
+    };
+  }
+
+  function generateIllustratorImageAsset(args) {
+    var doc = ensureIllustratorDocument({
+      name: "AI+ Image Asset",
+      width: 1080,
+      height: 1080
+    });
+    var artboard = getIllustratorArtboardBounds(doc);
+    var layer = findOrCreateIllustratorLayer(doc, "AI+ Reference");
+    var ratio = String(args && args.ratio ? args.ratio : "1:1");
+    var prompt = args && args.prompt ? args.prompt : "AI+ image request";
+    var boxWidth = artboard.width * 0.72;
+    var boxHeight = ratio === "16:9" ? boxWidth * 9 / 16 : ratio === "9:16" ? boxWidth * 16 / 9 : boxWidth;
+    var left = artboard.left + (artboard.width - boxWidth) / 2;
+    var top = artboard.top - (artboard.height - boxHeight) / 2;
+    var rect;
+    var label;
+
+    if (boxHeight > artboard.height * 0.72) {
+      boxHeight = artboard.height * 0.72;
+      boxWidth = ratio === "9:16" ? boxHeight * 9 / 16 : boxWidth;
+      left = artboard.left + (artboard.width - boxWidth) / 2;
+      top = artboard.top - (artboard.height - boxHeight) / 2;
+    }
+
+    doc.activeLayer = layer;
+    rect = doc.pathItems.rectangle(top, left, boxWidth, boxHeight);
+    rect.name = "AI+ Image Placeholder";
+    rect.filled = true;
+    rect.fillColor = illustratorRgbColor([242, 245, 248]);
+    rect.stroked = true;
+    rect.strokeWidth = 2;
+    rect.strokeColor = illustratorRgbColor([44, 116, 179]);
+
+    label = doc.textFrames.add();
+    label.contents = prompt;
+    label.name = "AI+ Image Prompt";
+    styleIllustratorTextFrame(label, {
+      fontSize: Math.max(14, Math.round(artboard.width / 42)),
+      fillColor: [28, 31, 36],
+      justify: "center"
+    });
+    label.position = [
+      left + boxWidth / 2 - label.width / 2,
+      top - boxHeight / 2 + label.height / 2
+    ];
+
+    return {
+      message: "Prepared Illustrator image asset request using " + (args && args.imageModel ? args.imageModel : "image model") + ".",
+      prompt: prompt,
+      ratio: ratio
+    };
+  }
+
+  function importIllustratorAttachmentAsset(args) {
+    var doc = ensureIllustratorDocument({
+      name: "AI+ Imported Asset",
+      width: 1080,
+      height: 1080
+    });
+    var path = args && args.path ? args.path : "";
+    var file;
+    var artboard;
+    var placed;
+    var scale;
+
+    if (!path) {
+      throw new Error("Attachment path is required.");
+    }
+
+    file = new File(path);
+    if (!file.exists) {
+      throw new Error("Attachment file does not exist: " + path);
+    }
+
+    artboard = getIllustratorArtboardBounds(doc);
+    doc.activeLayer = findOrCreateIllustratorLayer(doc, "AI+ Reference");
+    placed = doc.placedItems.add();
+    placed.file = file;
+    placed.name = file.name;
+
+    if (placed.width && placed.height) {
+      scale = Math.min((artboard.width * 0.82) / placed.width, (artboard.height * 0.82) / placed.height, 1);
+      placed.width = placed.width * scale;
+      placed.height = placed.height * scale;
+    }
+
+    placed.position = [
+      artboard.left + artboard.width / 2 - placed.width / 2,
+      artboard.top - artboard.height / 2 + placed.height / 2
+    ];
+
+    return {
+      message: "Placed Illustrator attachment: " + file.name,
+      itemName: placed.name
+    };
+  }
+
+  function exportIllustratorPng(args) {
+    var doc = activeIllustratorDocument();
+    var path = args && args.path ? args.path : "";
+    var file;
+    var folder;
+    var options;
+    var scale = Number(args && args.scale ? args.scale : 100);
+
+    if (!path) {
+      try {
+        folder = ensureFolder(doc.fullName.parent.fsName + "/AI+ Exports");
+      } catch (savedPathError) {
+        folder = ensureFolder(Folder.desktop.fsName + "/AI+ Exports");
+      }
+      path = folder.fsName + "/" + safeFileName(getIllustratorDocumentName(doc).replace(/\.[^\.]+$/, "")) + ".png";
+    }
+
+    file = new File(path);
+    if (file.parent && !file.parent.exists) {
+      file.parent.create();
+    }
+
+    options = new ExportOptionsPNG24();
+    options.artBoardClipping = !(args && args.artBoardClipping === false);
+    options.transparency = !(args && args.transparency === false);
+    options.antiAliasing = true;
+    options.horizontalScale = scale;
+    options.verticalScale = scale;
+
+    doc.exportFile(file, ExportType.PNG24, options);
+
+    return {
+      message: "Exported Illustrator PNG: " + file.name,
+      path: file.fsName
+    };
+  }
+
   function organizeProject() {
     if (isAfterEffects()) {
       return organizeAeProject();
     }
     if (isPremiere()) {
       return organizePremiereProject();
+    }
+    if (isIllustrator()) {
+      return organizeIllustratorDocument();
     }
     throw new Error("Unsupported Adobe host.");
   }
@@ -771,12 +1309,15 @@ var AIPlusHost = AIPlusHost || {};
     };
   }
 
-  function queueRender() {
+  function queueRender(args) {
     if (isAfterEffects()) {
       return queueAeRender();
     }
     if (isPremiere()) {
       return queuePremiereRender();
+    }
+    if (isIllustrator()) {
+      return exportIllustratorPng(args || {});
     }
     throw new Error("Unsupported Adobe host.");
   }
@@ -789,6 +1330,10 @@ var AIPlusHost = AIPlusHost || {};
     var comp;
     var prompt = args.prompt || "AI+ image request";
     var duration = 4;
+
+    if (isIllustrator()) {
+      return generateIllustratorImageAsset(args || {});
+    }
 
     if (!isAfterEffects()) {
       throw new Error("Image assets are currently available in After Effects.");
@@ -823,8 +1368,12 @@ var AIPlusHost = AIPlusHost || {};
   }
 
   function importAttachmentAsset(args) {
+    if (isIllustrator()) {
+      return importIllustratorAttachmentAsset(args || {});
+    }
+
     if (!isAfterEffects()) {
-      throw new Error("Attachment import is currently available in After Effects.");
+      throw new Error("Attachment import is currently available in After Effects and Illustrator.");
     }
     if (!app.project) {
       app.newProject();
@@ -854,12 +1403,17 @@ var AIPlusHost = AIPlusHost || {};
     getHostInfo: getHostInfo,
     summarizeProject: summarizeProject,
     inspectComposition: inspectComposition,
+    inspectIllustratorDocument: inspectIllustratorDocument,
     createCheckpoint: createCheckpoint,
     restoreCheckpoint: restoreCheckpoint,
     createComposition: createComposition,
+    createIllustratorDocument: createIllustratorDocument,
     createShapeGrid: createShapeGrid,
+    createIllustratorShapeGrid: createIllustratorShapeGrid,
     addTextLayer: addTextLayer,
+    addIllustratorText: addIllustratorText,
     applyTextStyle: applyTextStyle,
+    applyIllustratorTextStyle: applyIllustratorTextStyle,
     addFadeInOut: addFadeInOut,
     cascadeReveal: cascadeReveal,
     applyEasyEase: applyEasyEase,
@@ -867,10 +1421,12 @@ var AIPlusHost = AIPlusHost || {};
     createSliderRig: createSliderRig,
     applyExpression: applyExpression,
     normalizeLayerNames: normalizeLayerNames,
+    normalizeIllustratorObjectNames: normalizeIllustratorObjectNames,
     resetTransforms: resetTransforms,
     organizeProject: organizeProject,
     addMarkers: addMarkers,
     queueRender: queueRender,
+    exportIllustratorPng: exportIllustratorPng,
     generateImageAsset: generateImageAsset,
     importAttachmentAsset: importAttachmentAsset
   };

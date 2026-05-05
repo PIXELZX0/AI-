@@ -15,6 +15,7 @@
     busy: false,
     cancelRequested: false,
     pollingJob: false,
+    jobPollErrorShown: false,
     jobPollTimer: null,
     sessions: [],
     activeSession: null,
@@ -482,7 +483,7 @@
     var normalized = root.agent.normalizeHost(info);
     var label = info.appName ? info.appName + " " + (info.appVersion || "") : "Adobe panel";
     var settings = root.provider.loadSettings();
-    var mode = settings.endpoint ? "Endpoint" : (settings.provider === "anthropic" ? "Claude" : "Codex");
+    var mode = settings.provider === "codex" ? "Codex" : settings.provider === "anthropic" ? "Claude" : settings.endpoint ? "Endpoint" : "Built-in";
 
     nodes.hostLabel.textContent = label;
     nodes.hostMetric.textContent = normalized.replace("-", " ");
@@ -804,8 +805,12 @@
         result: result
       });
       addLog("mcp", "Reported result for " + job.id + ".");
+      state.jobPollErrorShown = false;
     } catch (error) {
-      addLog("error", error.message);
+      if (!state.jobPollErrorShown) {
+        addLog("error", error.message);
+        state.jobPollErrorShown = true;
+      }
     } finally {
       state.pollingJob = false;
     }
@@ -833,10 +838,10 @@
 
   function openSettings() {
     var settings = root.provider.loadSettings();
-    nodes.providerSelect.value = settings.provider || "openai";
+    nodes.providerSelect.value = settings.provider || "codex";
     nodes.modelInput.value = settings.model || "";
     nodes.thinkingSelect.value = settings.thinking || "auto";
-    nodes.endpointInput.value = settings.endpoint || "";
+    nodes.endpointInput.value = settings.endpoint || (settings.provider === "codex" ? root.provider.defaultEndpoint(settings) : "");
     nodes.openRouterInput.value = settings.openRouterKey || "";
     nodes.imageModelSelect.value = settings.imageModel || "google/nano-banana";
     nodes.preferredFontsInput.value = settings.preferredFonts || "";
@@ -867,6 +872,7 @@
 
     root.provider.saveSettings(settings);
     state.settings = settings;
+    state.jobPollErrorShown = false;
     updateHostUi();
     updateMcpSettingsUi();
     startJobPolling();

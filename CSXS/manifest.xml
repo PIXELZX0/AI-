@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ExtensionManifest Version="7.0" ExtensionBundleId="com.aiplus.bundle" ExtensionBundleVersion="0.2.2" ExtensionBundleName="AI+">
+<ExtensionManifest Version="7.0" ExtensionBundleId="com.aiplus.bundle" ExtensionBundleVersion="0.2.3" ExtensionBundleName="AI+">
   <ExtensionList>
-    <Extension Id="com.aiplus.panel" Version="0.2.2"/>
+    <Extension Id="com.aiplus.panel" Version="0.2.3"/>
   </ExtensionList>
   <ExecutionEnvironment>
     <HostList>
       <Host Name="AEFT" Version="[18.0,99.9]"/>
       <Host Name="PPRO" Version="[15.0,99.9]"/>
+      <Host Name="ILST" Version="[25.0,99.9]"/>
     </HostList>
     <LocaleList>
       <Locale Code="All"/>

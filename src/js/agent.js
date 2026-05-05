@@ -21,6 +21,10 @@
       return "premiere-pro";
     }
 
+    if (host === "illustrator" || name.indexOf("illustrator") !== -1) {
+      return "illustrator";
+    }
+
     return "preview";
   }
 
@@ -33,6 +37,8 @@
   }
 
   function addContextReads(actions, text, context) {
+    var host = context && context.host;
+
     if (includesAny(text, ["summarize", "summary", "analyze", "analyse", "project", "요약", "분석"])) {
       actions.push({
         tool: "summarizeProject",
@@ -41,7 +47,13 @@
       });
     }
 
-    if (includesAny(text, ["inspect", "layer", "expression", "selected", "comp", "컴프", "레이어", "표현식"])) {
+    if (host === "illustrator" && includesAny(text, ["inspect", "analyze", "analyse", "layer", "selected", "object", "selection", "검사", "분석", "레이어", "객체", "오브젝트", "선택"])) {
+      actions.push({
+        tool: "inspectIllustratorDocument",
+        args: {},
+        reason: "Read the active Illustrator document and selected objects."
+      });
+    } else if (includesAny(text, ["inspect", "layer", "expression", "selected", "comp", "컴프", "레이어", "표현식"])) {
       actions.push({
         tool: "inspectComposition",
         args: {},
@@ -51,11 +63,11 @@
 
     if (context && context.skills && context.skills.length) {
       actions.push({
-        tool: "inspectComposition",
+        tool: host === "illustrator" ? "inspectIllustratorDocument" : "inspectComposition",
         args: {
           focus: "skills"
         },
-        reason: "Load composition context for the active skill instructions."
+        reason: host === "illustrator" ? "Load Illustrator context for the active skill instructions." : "Load composition context for the active skill instructions."
       });
     }
   }
@@ -69,6 +81,131 @@
     var preferredFonts = settings.preferredFonts || "";
 
     addContextReads(actions, text, context);
+
+    if (host === "illustrator") {
+      var wantsIllustratorText = includesAny(text, ["title", "text", "caption", "subtitle", "타이틀", "텍스트", "자막"]);
+
+      if (includesAny(text, ["document", "artboard", "canvas", "poster", "logo", "flyer", "card", "illustration", "새 문서", "문서", "아트보드", "포스터", "로고", "카드", "일러스트"])) {
+        actions.push({
+          tool: "createIllustratorDocument",
+          args: {
+            name: includesAny(text, ["logo", "로고"]) ? "AI+ Logo Artboard" : "AI+ Illustrator Document",
+            width: includesAny(text, ["poster", "포스터"]) ? 1080 : 1200,
+            height: includesAny(text, ["poster", "포스터"]) ? 1350 : 1200,
+            colorSpace: includesAny(text, ["print", "cmyk", "인쇄"]) ? "cmyk" : "rgb"
+          },
+          reason: "Create a clean Illustrator document for the requested artwork."
+        });
+      }
+
+      if (includesAny(text, ["square", "grid", "shape", "box", "vector", "rectangle", "사각", "그리드", "도형", "벡터"])) {
+        actions.push({
+          tool: "createIllustratorShapeGrid",
+          args: {
+            namePrefix: "Vector",
+            count: includesAny(text, ["five", "5"]) ? 5 : 6,
+            columns: includesAny(text, ["five", "5"]) ? 5 : 3,
+            size: 140,
+            gap: 26
+          },
+          reason: "Create editable vector shapes on the active artboard."
+        });
+      }
+
+      if (wantsIllustratorText) {
+        actions.push({
+          tool: "addIllustratorText",
+          args: {
+            text: includesAny(text, ["subtitle", "caption", "자막"]) ? "AI generated caption" : "AI+",
+            fontSize: 76,
+            fillColor: [28, 31, 36],
+            justify: "center",
+            preferredFonts: preferredFonts
+          },
+          reason: "Add editable Illustrator text."
+        });
+      }
+
+      if (!wantsIllustratorText && includesAny(text, ["style", "font", "selected text", "스타일", "폰트", "선택한 텍스트"])) {
+        actions.push({
+          tool: "applyIllustratorTextStyle",
+          args: {
+            fontSize: 76,
+            fillColor: [28, 31, 36],
+            justify: "center",
+            preferredFonts: preferredFonts
+          },
+          reason: "Style selected Illustrator text."
+        });
+      }
+
+      if (includesAny(text, ["rename", "clean names", "rename objects", "이름 변경", "이름 바꾸", "오브젝트 이름 변경"])) {
+        actions.push({
+          tool: "normalizeIllustratorObjectNames",
+          args: {
+            prefix: "AI+ Object"
+          },
+          reason: "Make selected Illustrator object names predictable."
+        });
+      }
+
+      if (includesAny(text, ["organize", "folder", "layer", "project", "정리", "폴더", "레이어"])) {
+        actions.push({
+          tool: "organizeProject",
+          args: {},
+          reason: "Create a standard Illustrator layer structure."
+        });
+      }
+
+      if (includesAny(text, ["image", "generate", "texture", "reference", "이미지", "생성", "텍스처", "레퍼런스"])) {
+        actions.push({
+          tool: "generateImageAsset",
+          args: {
+            prompt: prompt,
+            ratio: includesAny(text, ["9:16"]) ? "9:16" : includesAny(text, ["16:9"]) ? "16:9" : "1:1",
+            count: includesAny(text, ["three", "3"]) ? 3 : 1,
+            imageModel: settings.imageModel || "google/nano-banana"
+          },
+          reason: "Prepare a visual reference placeholder on the artboard."
+        });
+      }
+
+      if (attachmentPath && includesAny(text, ["attach", "import", "file", "reference", "asset", "place", "첨부", "가져", "배치"])) {
+        actions.push({
+          tool: "importAttachmentAsset",
+          args: {
+            path: attachmentPath
+          },
+          reason: "Place the attached local file into the Illustrator document."
+        });
+      }
+
+      if (includesAny(text, ["render", "export", "png", "output", "내보내기", "익스포트", "출력"])) {
+        actions.push({
+          tool: "exportIllustratorPng",
+          args: {},
+          reason: "Export the active Illustrator document as a PNG."
+        });
+      }
+
+      if (!actions.length) {
+        actions.push({
+          tool: "summarizeProject",
+          args: {},
+          reason: "Start by reading the current Illustrator document."
+        });
+        actions.push({
+          tool: "inspectIllustratorDocument",
+          args: {},
+          reason: "Inspect the active artboard and selection before choosing edits."
+        });
+      }
+
+      return {
+        title: "Illustrator plan",
+        actions: filterUnsupported(actions, host)
+      };
+    }
 
     if (includesAny(text, ["intro", "composition", "comp", "cinematic", "인트로", "컴프"])) {
       actions.push({

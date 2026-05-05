@@ -1,12 +1,19 @@
 "use strict";
 
 const http = require("node:http");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+const { spawn } = require("node:child_process");
 const { getToolIds, tools, toolsForHost } = require("./src/node/tools.cjs");
 
 const PORT = Number(process.env.AI_PLUS_PORT || process.env.PORT || 8787);
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const OPENAI_MODEL = process.env.AI_PLUS_MODEL || "";
 const OPENAI_RESPONSES_URL = process.env.OPENAI_RESPONSES_URL || "https://api.openai.com/v1/responses";
+const CODEX_BIN = process.env.AI_PLUS_CODEX_BIN || process.env.CODEX_BIN || "codex";
+const CODEX_TIMEOUT_MS = Number(process.env.AI_PLUS_CODEX_TIMEOUT_MS || 180000);
+const PLANNER_MODE = String(process.env.AI_PLUS_PLANNER || "").toLowerCase();
 
 const defaultTools = getToolIds();
 const jobs = new Map();
@@ -69,12 +76,143 @@ function fallbackPlan(prompt, context) {
     });
   }
 
-  if (hasAny(text, ["inspect", "layer", "selected", "expression", "comp"])) {
+  if (host === "illustrator" && hasAny(text, ["inspect", "analyze", "analyse", "layer", "selected", "object", "selection", "검사", "분석", "레이어", "객체", "오브젝트", "선택"])) {
+    actions.push({
+      tool: "inspectIllustratorDocument",
+      args: {},
+      reason: "Inspect the active Illustrator document and selection."
+    });
+  } else if (hasAny(text, ["inspect", "layer", "selected", "expression", "comp"])) {
     actions.push({
       tool: "inspectComposition",
       args: {},
       reason: "Inspect the active composition and selection."
     });
+  }
+
+  if (host === "illustrator") {
+    const wantsIllustratorText = hasAny(text, ["title", "text", "caption", "subtitle", "타이틀", "텍스트", "자막"]);
+
+    if (hasAny(text, ["document", "artboard", "canvas", "poster", "logo", "flyer", "card", "illustration", "새 문서", "문서", "아트보드", "포스터", "로고", "카드", "일러스트"])) {
+      actions.push({
+        tool: "createIllustratorDocument",
+        args: {
+          name: hasAny(text, ["logo", "로고"]) ? "AI+ Logo Artboard" : "AI+ Illustrator Document",
+          width: hasAny(text, ["poster", "포스터"]) ? 1080 : 1200,
+          height: hasAny(text, ["poster", "포스터"]) ? 1350 : 1200,
+          colorSpace: hasAny(text, ["print", "cmyk", "인쇄"]) ? "cmyk" : "rgb"
+        },
+        reason: "Create a clean Illustrator document for the requested artwork."
+      });
+    }
+
+    if (hasAny(text, ["square", "grid", "shape", "box", "vector", "rectangle", "사각", "그리드", "도형", "벡터"])) {
+      actions.push({
+        tool: "createIllustratorShapeGrid",
+        args: {
+          namePrefix: "Vector",
+          count: hasAny(text, ["five", "5"]) ? 5 : 6,
+          columns: hasAny(text, ["five", "5"]) ? 5 : 3,
+          size: 140,
+          gap: 26
+        },
+        reason: "Create editable vector shapes on the active artboard."
+      });
+    }
+
+    if (wantsIllustratorText) {
+      actions.push({
+        tool: "addIllustratorText",
+        args: {
+          text: hasAny(text, ["caption", "subtitle", "자막"]) ? "AI generated caption" : "AI+",
+          fontSize: 76,
+          fillColor: [28, 31, 36],
+          justify: "center",
+          preferredFonts: settings.preferredFonts || ""
+        },
+        reason: "Add editable Illustrator text."
+      });
+    }
+
+    if (!wantsIllustratorText && hasAny(text, ["style", "font", "selected text", "스타일", "폰트", "선택한 텍스트"])) {
+      actions.push({
+        tool: "applyIllustratorTextStyle",
+        args: {
+          fontSize: 76,
+          fillColor: [28, 31, 36],
+          justify: "center",
+          preferredFonts: settings.preferredFonts || ""
+        },
+        reason: "Style selected Illustrator text."
+      });
+    }
+
+    if (hasAny(text, ["rename", "clean names", "rename objects", "이름 변경", "이름 바꾸", "오브젝트 이름 변경"])) {
+      actions.push({
+        tool: "normalizeIllustratorObjectNames",
+        args: {
+          prefix: "AI+ Object"
+        },
+        reason: "Make selected Illustrator object names predictable."
+      });
+    }
+
+    if (hasAny(text, ["organize", "folder", "layer", "project", "정리", "폴더", "레이어"])) {
+      actions.push({
+        tool: "organizeProject",
+        args: {},
+        reason: "Create a standard Illustrator layer structure."
+      });
+    }
+
+    if (hasAny(text, ["image", "generate", "texture", "reference", "이미지", "생성", "텍스처", "레퍼런스"])) {
+      actions.push({
+        tool: "generateImageAsset",
+        args: {
+          prompt,
+          ratio: hasAny(text, ["9:16"]) ? "9:16" : hasAny(text, ["16:9"]) ? "16:9" : "1:1",
+          count: hasAny(text, ["three", "3"]) ? 3 : 1,
+          imageModel: settings.imageModel || "google/nano-banana"
+        },
+        reason: "Prepare a visual reference placeholder on the artboard."
+      });
+    }
+
+    if (attachmentPath && hasAny(text, ["attach", "import", "file", "reference", "asset", "place", "첨부", "가져", "배치"])) {
+      actions.push({
+        tool: "importAttachmentAsset",
+        args: {
+          path: attachmentPath.path
+        },
+        reason: "Place the attached local file into the Illustrator document."
+      });
+    }
+
+    if (hasAny(text, ["render", "export", "png", "output", "내보내기", "익스포트", "출력"])) {
+      actions.push({
+        tool: "exportIllustratorPng",
+        args: {},
+        reason: "Export the active Illustrator document as a PNG."
+      });
+    }
+
+    if (!actions.length) {
+      actions.push({
+        tool: "summarizeProject",
+        args: {},
+        reason: "Start with Illustrator document context for a broad request."
+      });
+      actions.push({
+        tool: "inspectIllustratorDocument",
+        args: {},
+        reason: "Inspect the active artboard before choosing edits."
+      });
+    }
+
+    return {
+      title: "Illustrator plan",
+      actions
+    };
   }
 
   if (hasAny(text, ["intro", "composition", "comp", "cinematic"])) {
@@ -286,6 +424,14 @@ function getAllowedToolIds(allowedTools) {
     .filter(Boolean);
 }
 
+function effectiveAllowedTools(allowedTools, host) {
+  if (Array.isArray(allowedTools) && allowedTools.length) {
+    return allowedTools;
+  }
+
+  return host ? toolsForHost(host) : tools;
+}
+
 function sanitizePlan(plan, allowedTools) {
   const allowed = new Set(getAllowedToolIds(allowedTools));
   const actions = Array.isArray(plan && plan.actions) ? plan.actions : [];
@@ -325,12 +471,16 @@ function canRunJobOnHost(job, host) {
 }
 
 async function createAdobeJob(payload) {
-  const context = payload.context || {};
-  const allowedTools = payload.allowedTools || toolsForHost(context.host || "preview");
+  const context = {
+    ...(payload.context || {}),
+    settings: resolveSettings(payload, payload.context || {})
+  };
+  const allowedTools = effectiveAllowedTools(payload.allowedTools, context.host || "preview");
   const plan = await buildPlan({
     prompt: payload.prompt || "",
     context,
-    allowedTools
+    allowedTools,
+    settings: payload.settings || {}
   });
   const job = {
     id: createJobId(),
@@ -439,9 +589,215 @@ function planSchema(allowedTools) {
   };
 }
 
-async function callOpenAIPlanner(prompt, context, allowedTools) {
+function parseJsonFromText(text) {
+  const value = String(text || "").trim();
+
+  if (!value) {
+    throw new Error("Planner returned an empty response.");
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch (firstError) {
+    const fenced = value.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+    if (fenced) {
+      return JSON.parse(fenced[1]);
+    }
+
+    const start = value.indexOf("{");
+    const end = value.lastIndexOf("}");
+    if (start !== -1 && end > start) {
+      return JSON.parse(value.slice(start, end + 1));
+    }
+
+    throw firstError;
+  }
+}
+
+function resolveSettings(payload, context) {
+  return {
+    ...((context && context.settings) || {}),
+    ...((payload && payload.settings) || {})
+  };
+}
+
+function normalizeProvider(settings) {
+  return String(settings && settings.provider || "").toLowerCase();
+}
+
+function isCodexModel(model) {
+  return /codex/i.test(String(model || ""));
+}
+
+function shouldUseCodexPlanner(settings) {
+  const provider = normalizeProvider(settings);
+
+  if (PLANNER_MODE === "codex") {
+    return true;
+  }
+
+  if (PLANNER_MODE === "openai" || PLANNER_MODE === "fallback" || PLANNER_MODE === "builtin") {
+    return false;
+  }
+
+  return provider === "codex" || (provider === "openai" && isCodexModel(settings && settings.model));
+}
+
+function resolveCodexModel(settings) {
+  const model = process.env.AI_PLUS_CODEX_MODEL || (settings && settings.model) || "";
+
+  if (!model || String(model).toLowerCase() === "codex") {
+    return "";
+  }
+
+  return String(model);
+}
+
+function resolveOpenAIModel(settings) {
+  const provider = normalizeProvider(settings);
+  const model = OPENAI_MODEL || (provider === "openai" ? settings && settings.model : "");
+
+  if (!model || String(model).toLowerCase() === "codex") {
+    return "";
+  }
+
+  return String(model);
+}
+
+function shouldUseOpenAIPlanner(settings, codexRequested) {
+  const provider = normalizeProvider(settings);
+
+  if (PLANNER_MODE === "openai") {
+    return true;
+  }
+
+  if (PLANNER_MODE === "fallback" || PLANNER_MODE === "builtin") {
+    return false;
+  }
+
+  return provider === "openai" || (!provider && !codexRequested);
+}
+
+function codexPrompt(prompt, context, allowedTools) {
+  return [
+    "You are AI+, a Codex-powered planning agent for Adobe After Effects, Premiere Pro, and Illustrator.",
+    "Create one compact JSON plan for the user's Adobe automation request.",
+    "Return only JSON that matches the provided schema. Do not use Markdown.",
+    "Use only tool IDs from the allowed tools list. Never invent tools.",
+    "Prefer reversible, small actions. Do not request arbitrary code execution.",
+    "Do not edit local files or run shell commands; this task is planning only.",
+    "",
+    "User request:",
+    String(prompt || ""),
+    "",
+    "Context JSON:",
+    JSON.stringify(context || {}, null, 2),
+    "",
+    "Allowed tools JSON:",
+    JSON.stringify(allowedTools || [], null, 2)
+  ].join("\n");
+}
+
+function runProcess(command, args, input, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      cwd: __dirname,
+      env: process.env,
+      stdio: ["pipe", "pipe", "pipe"]
+    });
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    const timer = setTimeout(() => {
+      settled = true;
+      child.kill("SIGTERM");
+      reject(new Error(command + " timed out after " + timeoutMs + "ms."));
+    }, timeoutMs);
+
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk.toString();
+      if (stdout.length > 1024 * 1024) {
+        stdout = stdout.slice(-1024 * 1024);
+      }
+    });
+
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk.toString();
+      if (stderr.length > 1024 * 1024) {
+        stderr = stderr.slice(-1024 * 1024);
+      }
+    });
+
+    child.on("error", (error) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timer);
+      reject(error);
+    });
+
+    child.on("close", (code) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timer);
+      if (code === 0) {
+        resolve({
+          stdout,
+          stderr
+        });
+        return;
+      }
+      reject(new Error(command + " exited with code " + code + ": " + (stderr || stdout).trim().slice(0, 500)));
+    });
+
+    child.stdin.end(input || "");
+  });
+}
+
+async function callCodexPlanner(prompt, context, allowedTools, settings) {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "ai-plus-codex-"));
+  const schemaPath = path.join(tempDir, "plan.schema.json");
+  const outputPath = path.join(tempDir, "plan.json");
+  const args = [
+    "--ask-for-approval",
+    "never",
+    "exec",
+    "--ephemeral",
+    "--sandbox",
+    "read-only",
+    "--output-schema",
+    schemaPath,
+    "--output-last-message",
+    outputPath,
+    "-C",
+    __dirname,
+    "-"
+  ];
+  const model = resolveCodexModel(settings);
+
+  if (model) {
+    args.splice(2, 0, "--model", model);
+  }
+
+  try {
+    fs.writeFileSync(schemaPath, JSON.stringify(planSchema(allowedTools), null, 2));
+    const result = await runProcess(CODEX_BIN, args, codexPrompt(prompt, context, allowedTools), CODEX_TIMEOUT_MS);
+    const text = fs.existsSync(outputPath) ? fs.readFileSync(outputPath, "utf8") : result.stdout;
+    return parseJsonFromText(text);
+  } finally {
+    fs.rmSync(tempDir, {
+      recursive: true,
+      force: true
+    });
+  }
+}
+
+async function callOpenAIPlanner(prompt, context, allowedTools, model) {
   const systemPrompt = [
-    "You are AI+, an Adobe After Effects and Premiere Pro planning agent with Atom-style chat, checkpoint, skill, attachment, image, and MCP workflows.",
+    "You are AI+, an Adobe After Effects, Premiere Pro, and Illustrator planning agent with Atom-style chat, checkpoint, skill, attachment, image, and MCP workflows.",
     "Return a compact JSON plan that uses only the provided tool names.",
     "Never invent tools. Prefer reversible, small actions. Do not request arbitrary code execution.",
     "When the request is broad, summarize and inspect the project first, then choose safe creative actions.",
@@ -455,7 +811,7 @@ async function callOpenAIPlanner(prompt, context, allowedTools) {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      model: OPENAI_MODEL,
+      model,
       input: [
         {
           role: "system",
@@ -492,26 +848,42 @@ async function callOpenAIPlanner(prompt, context, allowedTools) {
 
 async function buildPlan(payload) {
   const prompt = payload.prompt || "";
-  const context = payload.context || {};
-  const allowedTools = payload.allowedTools || [];
+  const baseContext = payload.context || {};
+  const settings = resolveSettings(payload, baseContext);
+  const context = {
+    ...baseContext,
+    settings
+  };
+  const allowedTools = effectiveAllowedTools(payload.allowedTools, context.host || "");
+  const warnings = [];
+  const codexRequested = shouldUseCodexPlanner(settings);
+  const openAIModel = resolveOpenAIModel(settings);
 
-  if (OPENAI_API_KEY && OPENAI_MODEL) {
+  if (codexRequested) {
+    try {
+      return {
+        source: "codex",
+        ...sanitizePlan(await callCodexPlanner(prompt, context, allowedTools, settings), allowedTools)
+      };
+    } catch (error) {
+      warnings.push("Codex planner failed: " + error.message);
+    }
+  }
+
+  if (OPENAI_API_KEY && openAIModel && shouldUseOpenAIPlanner(settings, codexRequested)) {
     try {
       return {
         source: "openai",
-        ...sanitizePlan(await callOpenAIPlanner(prompt, context, allowedTools), allowedTools)
+        ...sanitizePlan(await callOpenAIPlanner(prompt, context, allowedTools, openAIModel), allowedTools)
       };
     } catch (error) {
-      return {
-        source: "fallback",
-        warning: error.message,
-        ...sanitizePlan(fallbackPlan(prompt, context), allowedTools)
-      };
+      warnings.push("OpenAI planner failed: " + error.message);
     }
   }
 
   return {
     source: "fallback",
+    warning: warnings.join(" "),
     ...sanitizePlan(fallbackPlan(prompt, context), allowedTools)
   };
 }
@@ -526,6 +898,15 @@ const server = http.createServer(async (request, response) => {
     sendJson(response, 200, {
       ok: true,
       modelConfigured: Boolean(OPENAI_API_KEY && OPENAI_MODEL),
+      plannerMode: PLANNER_MODE || "settings",
+      codex: {
+        command: CODEX_BIN,
+        timeoutMs: CODEX_TIMEOUT_MS
+      },
+      openai: {
+        configured: Boolean(OPENAI_API_KEY && OPENAI_MODEL),
+        model: OPENAI_MODEL || ""
+      },
       tools: tools.length,
       jobs: jobCounts()
     });
@@ -628,8 +1009,9 @@ if (require.main === module) {
   server.listen(PORT, "127.0.0.1", () => {
     console.log("AI+ planner listening at http://127.0.0.1:" + PORT + "/plan");
     console.log("AI+ Adobe job bridge listening at http://127.0.0.1:" + PORT + "/jobs");
+    console.log("Codex CLI planner command: " + CODEX_BIN);
     if (!OPENAI_API_KEY || !OPENAI_MODEL) {
-      console.log("Set OPENAI_API_KEY and AI_PLUS_MODEL to enable model planning.");
+      console.log("OpenAI API planner disabled. Set OPENAI_API_KEY and AI_PLUS_MODEL to enable it.");
     }
   });
 }

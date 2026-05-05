@@ -16,11 +16,17 @@ This starts:
 - `http://127.0.0.1:8787/jobs`
 - `http://127.0.0.1:8787/health`
 
+When the AI+ panel provider is `Codex CLI`, the `/plan` endpoint shells out to the local `codex exec` command and then sanitizes the returned JSON plan against AI+'s tool registry. If the server process cannot find `codex`, start the bridge with:
+
+```sh
+AI_PLUS_CODEX_BIN=/Applications/Codex.app/Contents/Resources/codex npm run planner
+```
+
 ## 2. Connect The Adobe Panel
 
-Open the AI+ panel in After Effects or Premiere Pro.
+Open the AI+ panel in After Effects, Premiere Pro, or Illustrator.
 
-Set `Provider` to:
+Set `Provider` to `Codex CLI` and keep the planning endpoint as:
 
 ```text
 http://127.0.0.1:8787/plan
@@ -81,7 +87,7 @@ flowchart LR
   Codex[Codex / MCP client] --> MCP[AI+ MCP stdio server]
   MCP --> Bridge[Local AI+ HTTP bridge]
   Bridge --> Panel[AI+ Adobe CEP panel]
-  Panel --> Host[After Effects / Premiere Pro]
+  Panel --> Host[After Effects / Premiere Pro / Illustrator]
   Panel --> Bridge
   MCP --> Codex
 ```

@@ -4,8 +4,8 @@
   var root = window.AIPlus || (window.AIPlus = {});
   var storageKey = "ai-plus-provider";
   var defaults = {
-    provider: "openai",
-    model: "codex",
+    provider: "codex",
+    model: "",
     endpoint: "",
     thinking: "auto",
     openRouterKey: "",
@@ -17,6 +17,11 @@
     mcpUrl: false,
     mcpPort: 8787
   };
+
+  function defaultEndpoint(settings) {
+    var port = Number(settings && settings.mcpPort) || defaults.mcpPort;
+    return "http://127.0.0.1:" + port + "/plan";
+  }
 
   function mergeSettings(settings) {
     var merged = {};
@@ -51,7 +56,8 @@
   }
 
   function getEndpointBase() {
-    var endpoint = loadSettings().endpoint;
+    var settings = loadSettings();
+    var endpoint = settings.endpoint || (settings.provider === "codex" ? defaultEndpoint(settings) : "");
 
     if (!endpoint) {
       return "";
@@ -66,12 +72,13 @@
 
   async function planWithEndpoint(prompt, context) {
     var settings = loadSettings();
+    var endpoint = settings.endpoint || (settings.provider === "codex" ? defaultEndpoint(settings) : "");
 
-    if (!settings.endpoint) {
+    if (!endpoint) {
       return null;
     }
 
-    var response = await fetch(settings.endpoint, {
+    var response = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -138,6 +145,7 @@
 
   root.provider = {
     getEndpointBase: getEndpointBase,
+    defaultEndpoint: defaultEndpoint,
     loadSettings: loadSettings,
     mergeSettings: mergeSettings,
     saveSettings: saveSettings,

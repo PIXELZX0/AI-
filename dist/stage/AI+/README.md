@@ -1,6 +1,6 @@
 # AI+
 
-AI+ is an Adobe After Effects and Premiere Pro AI panel scaffold. It turns a natural-language request into a gated execution plan, then runs only registered host tools through ExtendScript.
+AI+ is an Adobe After Effects, Premiere Pro, and Illustrator AI panel scaffold. It turns a natural-language request into a gated execution plan, then runs only registered host tools through ExtendScript.
 
 This first version is intentionally practical:
 
@@ -11,7 +11,7 @@ This first version is intentionally practical:
 - a no-dependency MCP server in `mcp-server.js` for Codex
 - a safe tool registry in `src/js/toolRegistry.js`
 - an Adobe host bridge in `host/jsx/ai-plus.jsx`
-- support for After Effects first, with Premiere Pro project/marker/export foundations
+- support for After Effects first, with Premiere Pro project/marker/export foundations and Illustrator document/artboard/vector foundations
 
 ## Why This Shape
 
@@ -55,11 +55,11 @@ defaults write com.adobe.CSXS.14 PlayerDebugMode 1
 defaults write com.adobe.CSXS.15 PlayerDebugMode 1
 ```
 
-Restart After Effects or Premiere Pro, then open `Window > Extensions > AI+`.
+Restart After Effects, Premiere Pro, or Illustrator, then open `Window > Extensions > AI+`.
 
-## Optional AI Provider
+## Codex AI Planner
 
-The panel can call a local HTTP planner. Start the bundled planner:
+The panel can call a local HTTP planner that uses Codex CLI when the provider is set to `Codex CLI`. Start the bundled planner:
 
 ```sh
 npm run planner
@@ -73,19 +73,25 @@ http://127.0.0.1:8787/plan
 
 When this endpoint is set, the panel also polls the local `/jobs` queue. Codex or another MCP client can queue work there and the open Adobe panel will execute it.
 
-Without model credentials, the server uses deterministic fallback planning. To enable model planning, start it with:
+Codex CLI uses your existing Codex login. If `codex` is not on the server process `PATH`, point AI+ at it:
 
 ```sh
-OPENAI_API_KEY=... AI_PLUS_MODEL=... npm run planner
+AI_PLUS_CODEX_BIN=/Applications/Codex.app/Contents/Resources/codex npm run planner
+```
+
+Without Codex CLI access or model credentials, the server uses deterministic fallback planning. To force the OpenAI API planner instead of Codex CLI, start it with:
+
+```sh
+AI_PLUS_PLANNER=openai OPENAI_API_KEY=... AI_PLUS_MODEL=... npm run planner
 ```
 
 The endpoint accepts:
 
 ```json
 {
-  "prompt": "Create a cinematic intro",
+  "prompt": "Create a square poster artboard with a vector grid and title text",
   "context": {
-    "host": "after-effects"
+    "host": "illustrator"
   },
   "allowedTools": []
 }
@@ -98,12 +104,13 @@ It should return:
   "title": "Plan title",
   "actions": [
     {
-      "tool": "createComposition",
+      "tool": "createIllustratorDocument",
       "args": {
-        "name": "AI+ Intro",
-        "duration": 8
+        "name": "AI+ Poster",
+        "width": 1080,
+        "height": 1080
       },
-      "reason": "Create a working comp."
+      "reason": "Create a working Illustrator document."
     }
   ]
 }
@@ -146,7 +153,7 @@ npm run package:zxp
 Output:
 
 ```text
-dist/AIPlus-0.2.2-dev.zxp
+dist/AIPlus-0.2.3-dev.zxp
 ```
 
 For an installer-ready signed ZXP, install `ZXPSignCmd`, then run:

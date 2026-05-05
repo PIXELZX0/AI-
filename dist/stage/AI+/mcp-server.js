@@ -25,7 +25,7 @@ const mcpTools = [
       properties: {
         host: {
           type: "string",
-          enum: ["after-effects", "premiere-pro", "preview"],
+          enum: ["after-effects", "premiere-pro", "illustrator", "preview"],
           description: "Optional Adobe host filter."
         }
       }
@@ -33,7 +33,7 @@ const mcpTools = [
   },
   {
     name: "ai_plus_plan",
-    description: "Create a gated AI+ action plan for After Effects or Premiere Pro.",
+    description: "Create a gated AI+ action plan for After Effects, Premiere Pro, or Illustrator.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -45,7 +45,7 @@ const mcpTools = [
         },
         host: {
           type: "string",
-          enum: ["after-effects", "premiere-pro", "preview"],
+          enum: ["after-effects", "premiere-pro", "illustrator", "preview"],
           description: "Target Adobe host."
         },
         allowedToolIds: {
@@ -60,7 +60,7 @@ const mcpTools = [
   },
   {
     name: "ai_plus_enqueue_adobe_job",
-    description: "Queue an AI+ plan for the open Adobe panel to execute in After Effects or Premiere Pro.",
+    description: "Queue an AI+ plan for the open Adobe panel to execute in After Effects, Premiere Pro, or Illustrator.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -72,7 +72,7 @@ const mcpTools = [
         },
         host: {
           type: "string",
-          enum: ["after-effects", "premiere-pro", "preview"],
+          enum: ["after-effects", "premiere-pro", "illustrator", "preview"],
           description: "Adobe host that should pick up the job."
         },
         allowedToolIds: {
@@ -137,7 +137,7 @@ function textResult(value) {
 }
 
 function normalizeHost(host) {
-  if (host === "after-effects" || host === "premiere-pro") {
+  if (host === "after-effects" || host === "premiere-pro" || host === "illustrator") {
     return host;
   }
   return "preview";
