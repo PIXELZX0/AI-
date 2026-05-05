@@ -115,7 +115,7 @@ select:focus-visible {
   gap: 10px;
 }
 
-.brand .atom-badge {
+.brand .ai-plus-badge {
   display: none;
 }
 
@@ -153,7 +153,7 @@ select:focus-visible {
   white-space: nowrap;
 }
 
-.atom-badge {
+.ai-plus-badge {
   position: relative;
   display: grid;
   place-items: center;
@@ -170,12 +170,12 @@ select:focus-visible {
   flex: 0 0 auto;
 }
 
-.atom-badge.large {
+.ai-plus-badge.large {
   width: 76px;
   height: 76px;
 }
 
-.atom-core {
+.ai-plus-core {
   width: 22%;
   height: 22%;
   border-radius: 50%;
@@ -184,7 +184,7 @@ select:focus-visible {
   z-index: 2;
 }
 
-.atom-orbit {
+.ai-plus-orbit {
   position: absolute;
   width: 68%;
   height: 68%;
@@ -201,7 +201,7 @@ select:focus-visible {
   transform: rotate(-43deg) scaleY(0.58);
 }
 
-.atom-orbit::after {
+.ai-plus-orbit::after {
   content: "";
   position: absolute;
   top: 50%;
@@ -706,7 +706,7 @@ select {
   font-size: 16px;
 }
 
-.atom-config-button {
+.ai-plus-config-button {
   display: grid;
   place-items: center;
   width: 52px;
@@ -717,7 +717,7 @@ select {
   background: #303030;
 }
 
-.atom-badge.mini {
+.ai-plus-badge.mini {
   width: 34px;
   height: 34px;
   border-color: #606060;

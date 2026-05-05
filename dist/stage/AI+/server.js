@@ -797,7 +797,7 @@ async function callCodexPlanner(prompt, context, allowedTools, settings) {
 
 async function callOpenAIPlanner(prompt, context, allowedTools, model) {
   const systemPrompt = [
-    "You are AI+, an Adobe After Effects, Premiere Pro, and Illustrator planning agent with Atom-style chat, checkpoint, skill, attachment, image, and MCP workflows.",
+    "You are AI+, an Adobe After Effects, Premiere Pro, and Illustrator planning agent with AI+ style chat, checkpoint, skill, attachment, image, and MCP workflows.",
     "Return a compact JSON plan that uses only the provided tool names.",
     "Never invent tools. Prefer reversible, small actions. Do not request arbitrary code execution.",
     "When the request is broad, summarize and inspect the project first, then choose safe creative actions.",

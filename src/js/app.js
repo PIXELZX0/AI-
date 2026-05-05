@@ -49,6 +49,10 @@
       .replace(/'/g, "&#039;");
   }
 
+  function brandText(value) {
+    return String(value === undefined || value === null ? "" : value).replace(new RegExp("\\b" + "At" + "om" + "\\b", "g"), "AI+");
+  }
+
   function formatTime(value) {
     var date = value ? new Date(value) : new Date();
     return date.toLocaleTimeString([], {
@@ -288,7 +292,7 @@
 
   function renderMessage(message) {
     var article = document.createElement("article");
-    var label = message.sender || (message.role === "user" ? "You" : "Atom");
+    var label = brandText(message.sender || (message.role === "user" ? "You" : "AI+"));
     var initials = message.role === "user" ? label.slice(0, 3) : "AI";
     var body = "<div class=\"avatar\">" + escapeHtml(initials) + "</div>" +
       "<div class=\"bubble\">" +
@@ -317,7 +321,7 @@
     if (message.checkpoint) {
       body += "<div class=\"message-result\"><button class=\"checkpoint-row\" type=\"button\" data-action=\"restore-checkpoint\" data-checkpoint-id=\"" + message.checkpoint.id + "\">" +
         "<strong>Current checkpoint ✓</strong>" +
-        "<span class=\"item-meta\">" + escapeHtml(message.checkpoint.label || message.checkpoint.path || "checkpoint") + "</span>" +
+        "<span class=\"item-meta\">" + escapeHtml(brandText(message.checkpoint.label || message.checkpoint.path || "checkpoint")) + "</span>" +
         "</button></div>";
     }
 
@@ -345,7 +349,7 @@
         role: "assistant",
         text: "Ready.",
         time: new Date().toISOString(),
-        sender: "Atom"
+        sender: "AI+"
       });
       return;
     }
@@ -417,7 +421,7 @@
       var item = document.createElement("div");
       item.className = "stack-item" + (state.activeSession && session.id === state.activeSession.id ? " active" : "");
       item.innerHTML =
-        "<strong>" + escapeHtml(session.title || "New chat") + "</strong>" +
+        "<strong>" + escapeHtml(brandText(session.title || "New chat")) + "</strong>" +
         "<span class=\"item-meta\">" + escapeHtml(formatDate(session.updatedAt)) + " · " + (session.messages || []).length + " messages</span>" +
         "<button type=\"button\" data-session-id=\"" + session.id + "\">Open</button>";
       nodes.historyList.appendChild(item);
@@ -471,7 +475,7 @@
       var row = document.createElement("div");
       row.className = "checkpoint-row";
       row.innerHTML =
-        "<strong>" + escapeHtml(checkpoint.label) + "</strong>" +
+        "<strong>" + escapeHtml(brandText(checkpoint.label)) + "</strong>" +
         "<span class=\"item-meta\">" + escapeHtml(formatDate(checkpoint.createdAt)) + "</span>" +
         "<button type=\"button\" data-checkpoint-id=\"" + checkpoint.id + "\">Restore</button>";
       nodes.checkpointList.appendChild(row);
@@ -569,7 +573,7 @@
 
   async function createCheckpoint(label, visible) {
     var result = await root.cep.runHostCommand("createCheckpoint", {
-      label: label || "Atom checkpoint",
+      label: label || "AI+ checkpoint",
       visible: visible !== false
     });
 
@@ -586,7 +590,7 @@
     var value = result.value || {};
     var checkpoint = {
       id: uid("checkpoint"),
-      label: value.label || label || "Atom checkpoint",
+      label: value.label || label || "AI+ checkpoint",
       path: value.path || "",
       createdAt: new Date().toISOString(),
       visible: visible !== false
@@ -605,7 +609,7 @@
       return;
     }
 
-    if (root.provider.loadSettings().confirmReverts && !window.confirm("Restore checkpoint \"" + checkpoint.label + "\"?")) {
+    if (root.provider.loadSettings().confirmReverts && !window.confirm("Restore checkpoint \"" + brandText(checkpoint.label) + "\"?")) {
       return;
     }
 
@@ -899,7 +903,7 @@
     state.currentPlan = null;
     renderMessages();
     renderHistory();
-    addLog("history", "Opened " + next.title + ".");
+    addLog("history", "Opened " + brandText(next.title) + ".");
   }
 
   function startNewChat() {

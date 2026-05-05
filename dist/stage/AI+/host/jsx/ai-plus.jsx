@@ -1322,7 +1322,7 @@ var AIPlusHost = AIPlusHost || {};
     throw new Error("Unsupported Adobe host.");
   }
 
-  function findOrCreateAtomFolder() {
+  function findOrCreateAIPlusFolder() {
     return findOrCreateAeFolder("AI+ Assets");
   }
 
@@ -1391,7 +1391,7 @@ var AIPlusHost = AIPlusHost || {};
 
     var options = new ImportOptions(file);
     var item = app.project.importFile(options);
-    item.parentFolder = findOrCreateAtomFolder();
+    item.parentFolder = findOrCreateAIPlusFolder();
 
     return {
       message: "Imported attachment: " + item.name,
