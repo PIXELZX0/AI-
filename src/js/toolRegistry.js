@@ -36,15 +36,57 @@
       id: "createCheckpoint",
       label: "Create checkpoint",
       description: "Save a restorable project checkpoint before or after automation.",
-      hosts: ["after-effects", "preview"],
+      hosts: ["after-effects", "premiere-pro", "preview"],
       risk: "write"
     },
     {
       id: "restoreCheckpoint",
       label: "Restore checkpoint",
-      description: "Open a saved After Effects project checkpoint.",
-      hosts: ["after-effects", "preview"],
+      description: "Open a saved After Effects or Premiere Pro project checkpoint.",
+      hosts: ["after-effects", "premiere-pro", "preview"],
       risk: "destructive"
+    },
+    {
+      id: "inspectPremiereSequence",
+      label: "Inspect sequence",
+      description: "Read tracks, clips, markers, and selection from the active Premiere Pro sequence.",
+      hosts: ["premiere-pro", "preview"],
+      risk: "read"
+    },
+    {
+      id: "createPremiereSequence",
+      label: "Create sequence",
+      description: "Create a new Premiere Pro sequence copying settings from the active sequence.",
+      hosts: ["premiere-pro", "preview"],
+      risk: "write"
+    },
+    {
+      id: "placePremiereClip",
+      label: "Place clip",
+      description: "Insert or overwrite a project bin item onto a sequence track at a given time.",
+      hosts: ["premiere-pro", "preview"],
+      risk: "write"
+    },
+    {
+      id: "trimPremiereClips",
+      label: "Trim clips",
+      description: "Adjust the start and end time of selected timeline clips.",
+      hosts: ["premiere-pro", "preview"],
+      risk: "write"
+    },
+    {
+      id: "normalizePremiereClipNames",
+      label: "Rename clips",
+      description: "Rename selected timeline clips with clean numbered labels.",
+      hosts: ["premiere-pro", "preview"],
+      risk: "write"
+    },
+    {
+      id: "setPremiereSequenceInOut",
+      label: "Set work area",
+      description: "Set the sequence in and/or out point used for export and preview.",
+      hosts: ["premiere-pro", "preview"],
+      risk: "write"
     },
     {
       id: "createComposition",
@@ -197,7 +239,7 @@
       id: "importAttachmentAsset",
       label: "Import attachment",
       description: "Import or place an attached local file into the active Adobe project or document.",
-      hosts: ["after-effects", "illustrator", "preview"],
+      hosts: ["after-effects", "premiere-pro", "illustrator", "preview"],
       risk: "write"
     }
   ];

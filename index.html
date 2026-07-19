@@ -34,136 +34,15 @@
       </header>
 
       <section class="workspace">
-        <aside id="drawerPanel" class="drawer-panel" aria-label="History">
+        <aside id="drawerPanel" class="drawer-panel" aria-label="Drawer">
           <div class="drawer-heading">
-            <h2>History</h2>
+            <button class="tab-button active" type="button" data-drawer-tab="history">History</button>
+            <button class="tab-button" type="button" data-drawer-tab="session">Session</button>
           </div>
           <section id="historyView" class="drawer-view">
             <div id="historyList" class="stack-list" aria-label="Conversation history"></div>
           </section>
-        </aside>
-
-        <section id="chatPanel" class="chat-panel" aria-label="Conversation">
-          <div id="messageList" class="message-list" role="log" aria-live="polite"></div>
-
-          <div id="attachmentList" class="attachment-list" aria-label="Attachments"></div>
-
-          <form id="composerForm" class="composer">
-            <input id="fileInput" class="visually-hidden" type="file" multiple>
-            <button id="configButton" class="ai-plus-config-button" type="button" title="AI+ Config" aria-label="AI+ Config">
-              <span class="ai-plus-badge mini" aria-hidden="true">
-                <span class="ai-plus-core"></span>
-                <span class="ai-plus-orbit orbit-a"></span>
-                <span class="ai-plus-orbit orbit-b"></span>
-              </span>
-            </button>
-            <button id="attachButton" class="icon-button composer-tool" type="button" title="Attach file" aria-label="Attach file">+</button>
-            <div class="composer-input-wrap">
-              <textarea id="promptInput" rows="1" spellcheck="false" placeholder="Message AI+"></textarea>
-              <div id="skillMenu" class="skill-menu hidden" role="listbox"></div>
-            </div>
-            <div class="composer-actions">
-              <button id="planButton" class="secondary-button" type="button">Plan</button>
-              <button id="runButton" class="primary-button" type="submit">Send</button>
-            </div>
-          </form>
-        </section>
-      </section>
-
-      <dialog id="settingsDialog">
-        <div class="settings-form">
-          <header>
-            <h2>Settings</h2>
-            <button id="closeSettingsButton" class="icon-button small" type="button" title="Close" aria-label="Close">×</button>
-          </header>
-
-          <section class="settings-section">
-            <h3>Model</h3>
-            <div class="settings-grid">
-              <label for="providerSelect">Provider</label>
-              <select id="providerSelect">
-                <option value="codex">Codex CLI</option>
-                <option value="openai">OpenAI API</option>
-                <option value="anthropic">Anthropic / Claude Code</option>
-                <option value="endpoint">Local endpoint</option>
-              </select>
-
-              <label for="modelInput">Model</label>
-              <input id="modelInput" type="text" placeholder="gpt-5.2-codex">
-
-              <label for="thinkingSelect">Thinking</label>
-              <select id="thinkingSelect">
-                <option value="auto">Auto</option>
-                <option value="fast">Fast</option>
-                <option value="deep">Deep</option>
-              </select>
-
-              <label for="endpointInput">Planning endpoint</label>
-              <input id="endpointInput" type="url" placeholder="http://127.0.0.1:8787/plan">
-
-              <label for="openRouterInput">OpenRouter key</label>
-              <input id="openRouterInput" type="password" placeholder="sk-or-...">
-
-              <label for="imageModelSelect">Image model</label>
-              <select id="imageModelSelect">
-                <option value="google/nano-banana">Nano Banana</option>
-                <option value="google/nano-banana-pro">Nano Banana Pro</option>
-                <option value="openai/gpt-image-1">GPT Image</option>
-                <option value="openai/gpt-image-1-mini">GPT Image Mini</option>
-              </select>
-
-              <label for="preferredFontsInput">Preferred fonts</label>
-              <input id="preferredFontsInput" type="text" placeholder="Inter, Montserrat, Aeonik">
-            </div>
-          </section>
-
-          <section class="settings-section">
-            <h3>MCP</h3>
-            <p class="settings-note">Connect external agents to control After Effects through AI+'s MCP server.</p>
-            <div class="settings-grid">
-              <label for="mcpPortInput">Port</label>
-              <input id="mcpPortInput" type="number" min="1024" max="65535" step="1">
-
-              <label>MCP URL</label>
-              <div class="copy-row">
-                <code id="mcpUrlLabel">http://127.0.0.1:8787/mcp</code>
-                <button id="copyMcpUrlButton" class="secondary-button" type="button">Copy</button>
-              </div>
-            </div>
-
-            <div class="toggle-grid">
-              <label>Claude Code <input id="mcpClaudeInput" type="checkbox"></label>
-              <label>URL mode <input id="mcpUrlInput" type="checkbox"></label>
-            </div>
-          </section>
-
-          <section id="skillsView" class="settings-section">
-            <div class="settings-section-header">
-              <div>
-                <h3>Manage Skills</h3>
-                <p class="settings-note">Create reusable knowledge for AI+.</p>
-              </div>
-            </div>
-            <div id="skillList" class="stack-list" aria-label="Saved skills"></div>
-            <form id="skillForm" class="compact-form">
-              <input id="skillNameInput" type="text" placeholder="Skill name" autocomplete="off">
-              <input id="skillDescriptionInput" type="text" placeholder="When to use it" autocomplete="off">
-              <select id="skillScopeInput" aria-label="Skill scope">
-                <option value="global">Global</option>
-                <option value="project">Project</option>
-              </select>
-              <textarea id="skillInstructionInput" rows="4" placeholder="Instructions"></textarea>
-              <button class="primary-button" type="submit">Save skill</button>
-            </form>
-          </section>
-
-          <section class="settings-section">
-            <h3>Session</h3>
-            <div class="toggle-grid">
-              <label>Confirm reverts <input id="confirmRevertsInput" type="checkbox"></label>
-              <label>Finish sound <input id="notificationSoundInput" type="checkbox"></label>
-            </div>
-
+          <section id="sessionView" class="drawer-view hidden">
             <aside class="inspector-panel" aria-label="Session">
               <section class="status-grid" aria-label="Status">
                 <div class="metric">
@@ -211,9 +90,133 @@
               </section>
             </aside>
           </section>
+        </aside>
+
+        <section id="chatPanel" class="chat-panel" aria-label="Conversation">
+          <div id="messageList" class="message-list" role="log" aria-live="polite"></div>
+
+          <div id="attachmentList" class="attachment-list" aria-label="Attachments"></div>
+
+          <form id="composerForm" class="composer">
+            <input id="fileInput" class="visually-hidden" type="file" multiple>
+            <button id="configButton" class="ai-plus-config-button" type="button" title="AI+ Config" aria-label="AI+ Config">
+              <span class="ai-plus-badge mini" aria-hidden="true">
+                <span class="ai-plus-core"></span>
+                <span class="ai-plus-orbit orbit-a"></span>
+                <span class="ai-plus-orbit orbit-b"></span>
+              </span>
+            </button>
+            <button id="attachButton" class="icon-button composer-tool" type="button" title="Attach file" aria-label="Attach file">+</button>
+            <div class="composer-input-wrap">
+              <textarea id="promptInput" rows="1" spellcheck="false" placeholder="Message AI+"></textarea>
+              <div id="skillMenu" class="skill-menu hidden" role="listbox"></div>
+            </div>
+            <div class="composer-actions">
+              <button id="planButton" class="secondary-button" type="button">Plan</button>
+              <button id="runButton" class="primary-button" type="submit">Send</button>
+            </div>
+          </form>
+        </section>
+      </section>
+
+      <dialog id="settingsDialog">
+        <div class="settings-form">
+          <header>
+            <h2>Settings</h2>
+            <button id="closeSettingsButton" class="icon-button small" type="button" title="Close" aria-label="Close">×</button>
+          </header>
+
+          <section class="settings-section">
+            <h3>Model</h3>
+            <div class="settings-grid">
+              <label for="providerSelect">Provider</label>
+              <select id="providerSelect">
+                <option value="codex">Codex CLI</option>
+                <option value="opencode">opencode-go</option>
+                <option value="openai">OpenAI API</option>
+                <option value="anthropic">Anthropic / Claude Code</option>
+                <option value="endpoint">Local endpoint</option>
+              </select>
+
+              <label for="modelInput">Model</label>
+              <input id="modelInput" type="text" placeholder="gpt-5.2-codex">
+
+              <label for="thinkingSelect">Thinking</label>
+              <select id="thinkingSelect">
+                <option value="auto">Auto</option>
+                <option value="fast">Fast</option>
+                <option value="deep">Deep</option>
+              </select>
+
+              <label for="endpointInput">Planning endpoint</label>
+              <input id="endpointInput" type="url" placeholder="http://127.0.0.1:8787/plan">
+
+              <label for="openRouterInput">OpenRouter key</label>
+              <input id="openRouterInput" type="password" placeholder="sk-or-...">
+
+              <label for="imageModelSelect">Image model</label>
+              <select id="imageModelSelect">
+                <option value="google/nano-banana">Nano Banana</option>
+                <option value="google/nano-banana-pro">Nano Banana Pro</option>
+                <option value="openai/gpt-image-1">GPT Image</option>
+                <option value="openai/gpt-image-1-mini">GPT Image Mini</option>
+              </select>
+
+              <label for="preferredFontsInput">Preferred fonts</label>
+              <input id="preferredFontsInput" type="text" placeholder="Inter, Montserrat, Aeonik">
+            </div>
+          </section>
+
+          <section class="settings-section">
+            <h3>MCP</h3>
+            <p class="settings-note">Connect external agents to control your Adobe host through AI+'s MCP server.</p>
+            <div class="settings-grid">
+              <label for="mcpPortInput">Port</label>
+              <input id="mcpPortInput" type="number" min="1024" max="65535" step="1">
+
+              <label>MCP URL</label>
+              <div class="copy-row">
+                <code id="mcpUrlLabel">http://127.0.0.1:8787/mcp</code>
+                <button id="copyMcpUrlButton" class="secondary-button" type="button">Copy</button>
+              </div>
+            </div>
+
+            <div class="toggle-grid">
+              <label>Claude Code <input id="mcpClaudeInput" type="checkbox"></label>
+              <label>URL mode <input id="mcpUrlInput" type="checkbox"></label>
+            </div>
+          </section>
+
+          <section id="skillsView" class="settings-section">
+            <div class="settings-section-header">
+              <div>
+                <h3>Manage Skills</h3>
+                <p class="settings-note">Create reusable knowledge for AI+.</p>
+              </div>
+            </div>
+            <div id="skillList" class="stack-list" aria-label="Saved skills"></div>
+            <form id="skillForm" class="compact-form">
+              <input id="skillNameInput" type="text" placeholder="Skill name" autocomplete="off">
+              <input id="skillDescriptionInput" type="text" placeholder="When to use it" autocomplete="off">
+              <select id="skillScopeInput" aria-label="Skill scope">
+                <option value="global">Global</option>
+                <option value="project">Project</option>
+              </select>
+              <textarea id="skillInstructionInput" rows="4" placeholder="Instructions"></textarea>
+              <button class="primary-button" type="submit">Save skill</button>
+            </form>
+          </section>
+
+          <section class="settings-section">
+            <h3>Session</h3>
+            <div class="toggle-grid">
+              <label>Confirm reverts <input id="confirmRevertsInput" type="checkbox"></label>
+              <label>Finish sound <input id="notificationSoundInput" type="checkbox"></label>
+            </div>
+          </section>
 
           <menu>
-            <span id="versionLabel" class="footerbar">v0.1.0</span>
+            <span id="versionLabel" class="footerbar">v0.3.0</span>
             <button id="saveSettingsButton" class="primary-button" type="button">Save</button>
           </menu>
         </div>

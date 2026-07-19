@@ -1,3 +1,19 @@
+@font-face {
+  font-family: "Inter";
+  src: url("../../assets/fonts/InterVariable.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Space Mono";
+  src: url("../../assets/fonts/SpaceMono-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   color-scheme: dark;
   --bg: #2b2b2b;
@@ -240,7 +256,6 @@ select:focus-visible {
 .nav-button,
 .status-pill,
 .tab-button,
-.tool-chip,
 .primary-button,
 .secondary-button,
 .ghost-button,
@@ -309,31 +324,39 @@ select:focus-visible {
   position: absolute;
   inset: 12px auto 12px 12px;
   z-index: 18;
-  display: none;
+  display: grid;
   grid-template-rows: auto 1fr;
   width: min(340px, calc(100vw - 24px));
   overflow: hidden;
   border-radius: 18px;
-  background: #2a2a2a;
+  background: rgba(28, 28, 28, 0.82);
+  backdrop-filter: blur(24px) saturate(160%);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.48);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateX(-14px) scale(0.98);
+  transform-origin: top left;
+  transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 180ms;
 }
 
 .drawer-panel.open {
-  display: grid;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateX(0) scale(1);
+  transition-duration: 260ms;
 }
 
 .drawer-heading {
   display: flex;
   align-items: center;
+  gap: 4px;
   min-height: 62px;
-  padding: 0 20px;
+  padding: 0 16px;
   border-bottom: 1px solid var(--line);
-}
-
-.drawer-heading h2 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 820;
 }
 
 .drawer-view {
@@ -376,6 +399,25 @@ select:focus-visible {
 .message {
   display: block;
   max-width: min(760px, 100%);
+}
+
+/* the whole list rebuilds on every render (see render pattern in app.js), so
+   only :last-child gets the entrance animation - matches the newest message
+   without replaying it across every bubble already on screen */
+.message-list .message:last-child {
+  animation: messageIn 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes messageIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .message.user {
@@ -558,13 +600,6 @@ select:focus-visible {
   margin-top: 10px;
 }
 
-.shortcut-row {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 8px;
-  padding: 0 12px 10px;
-}
-
 .attachment-list {
   display: flex;
   gap: 8px;
@@ -654,7 +689,6 @@ select {
 .primary-button,
 .secondary-button,
 .ghost-button,
-.tool-chip,
 .icon-button {
   display: inline-flex;
   align-items: center;
@@ -682,20 +716,6 @@ select {
   border: 1px solid var(--line);
   background: transparent;
   color: var(--muted);
-}
-
-.tool-chip {
-  min-width: 0;
-  height: 32px;
-  padding: 0 8px;
-  border: 1px solid var(--line);
-  background: var(--surface-soft);
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 740;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .icon-button {
@@ -746,7 +766,6 @@ select {
 .primary-button:hover,
 .secondary-button:hover,
 .ghost-button:hover,
-.tool-chip:hover,
 .icon-button:hover {
   transform: translateY(-1px);
 }
@@ -811,6 +830,21 @@ select {
   grid-template-rows: auto 1fr;
   min-height: 0;
   overflow: hidden;
+}
+
+.pane:not(.hidden),
+.drawer-view:not(.hidden) {
+  animation: paneIn 140ms ease;
+}
+
+@keyframes paneIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .pane-heading {
@@ -936,10 +970,26 @@ select {
   padding: 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(15, 15, 15, 0.98);
+  background: rgba(15, 15, 15, 0.9);
+  backdrop-filter: blur(16px);
   box-shadow: 0 18px 50px var(--shadow);
   overflow: auto;
   z-index: 8;
+  transform-origin: bottom left;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition: opacity 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* higher specificity than the global `.hidden{display:none!important}` utility,
+   so this popover can fade out instead of disappearing instantly */
+.skill-menu.hidden {
+  display: grid !important;
+  opacity: 0;
+  transform: translateY(6px) scale(0.98);
+  pointer-events: none;
+  transition-duration: 120ms;
 }
 
 .skill-option {
@@ -1015,10 +1065,28 @@ dialog {
   color: var(--text);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.58);
   overflow: hidden;
+  opacity: 0;
+  transform: scale(0.96);
+  transform-origin: top right;
+  transition: opacity 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+dialog.dialog-visible {
+  opacity: 1;
+  transform: scale(1);
+  transition-duration: 240ms;
 }
 
 dialog::backdrop {
   background: rgba(0, 0, 0, 0.66);
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+dialog.dialog-visible::backdrop {
+  opacity: 1;
+  transition-duration: 240ms;
 }
 
 .settings-form {
@@ -1163,23 +1231,58 @@ dialog::backdrop {
   overflow-wrap: anywhere;
 }
 
-dialog .inspector-panel {
-  min-height: 420px;
-  padding: 0;
-  border-radius: 16px;
-  background: #292929;
-  overflow: hidden;
+.drawer-panel .inspector-panel {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
-dialog .inspector-panel .status-grid {
-  padding: 14px;
-}
-
-dialog .inspector-panel .pane {
+.drawer-panel .inspector-panel .pane {
   border-right: 0;
   border-bottom: 0;
   border-left: 0;
   border-radius: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer-panel,
+  .skill-menu,
+  dialog,
+  dialog::backdrop {
+    transition-duration: 120ms !important;
+    transform: none !important;
+  }
+
+  .pane:not(.hidden),
+  .drawer-view:not(.hidden) {
+    animation-duration: 120ms;
+  }
+
+  .message-list .message:last-child {
+    animation: messageInReduced 120ms ease;
+  }
+}
+
+@keyframes messageInReduced {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .drawer-panel {
+    background: #232323;
+    backdrop-filter: none;
+  }
+
+  .skill-menu {
+    background: #101010;
+    backdrop-filter: none;
+  }
 }
 
 @media (max-width: 1080px) {
@@ -1225,10 +1328,6 @@ dialog .inspector-panel .pane {
 
   #refreshHostButton {
     display: none;
-  }
-
-  .shortcut-row {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .message-list {

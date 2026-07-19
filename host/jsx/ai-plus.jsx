@@ -333,16 +333,16 @@ var AIPlusHost = AIPlusHost || {};
   }
 
   function createCheckpoint(args) {
-    if (!isAfterEffects()) {
+    if (!isAfterEffects() && !isPremiere()) {
       return {
-        message: "Checkpoints are currently available in After Effects.",
+        message: "Checkpoints are currently available in After Effects and Premiere Pro.",
         skipped: true
       };
     }
 
     if (!app.project || !app.project.file) {
       return {
-        message: "Save the After Effects project once to enable checkpoints.",
+        message: "Save the project once to enable checkpoints.",
         skipped: true
       };
     }
@@ -354,7 +354,8 @@ var AIPlusHost = AIPlusHost || {};
     var now = new Date();
     var stamp = now.getFullYear() + pad(now.getMonth() + 1) + pad(now.getDate()) + "_" + pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds());
     var label = args && args.label ? args.label : "AI+ checkpoint";
-    var target = new File(checkpointFolder.fsName + "/" + safeFileName(label) + "_" + stamp + ".aep");
+    var extension = String(app.project.file.name || "").replace(/^.*\./, "") || "aep";
+    var target = new File(checkpointFolder.fsName + "/" + safeFileName(label) + "_" + stamp + "." + extension);
 
     if (!app.project.file.copy(target.fsName)) {
       throw new Error("Unable to copy project checkpoint.");
@@ -813,6 +814,310 @@ var AIPlusHost = AIPlusHost || {};
 
     return {
       message: "Organized After Effects project; moved " + moved + " item(s)."
+    };
+  }
+
+  function premiereTime(seconds) {
+    var time = new Time();
+    time.seconds = Number(seconds) || 0;
+    return time;
+  }
+
+  function premiereSequenceSettings(sequence) {
+    try {
+      var settings = sequence.getSettings();
+      return {
+        width: settings.videoFrameWidth,
+        height: settings.videoFrameHeight,
+        frameRate: settings.videoFrameRate && settings.videoFrameRate.seconds ? Math.round(1 / settings.videoFrameRate.seconds * 100) / 100 : 0
+      };
+    } catch (settingsError) {
+      return {};
+    }
+  }
+
+  function eachPremiereTrack(sequence, callback) {
+    var i;
+    for (i = 0; i < sequence.videoTracks.numTracks; i += 1) {
+      callback(sequence.videoTracks[i], "video", i);
+    }
+    for (i = 0; i < sequence.audioTracks.numTracks; i += 1) {
+      callback(sequence.audioTracks[i], "audio", i);
+    }
+  }
+
+  function selectedPremiereTrackItems(sequence) {
+    var selected = [];
+    eachPremiereTrack(sequence, function (track) {
+      var i;
+      for (i = 0; i < track.clips.numItems; i += 1) {
+        var clip = track.clips[i];
+        var isSelected = false;
+        try {
+          isSelected = clip.isSelected();
+        } catch (selectionError) {
+        }
+        if (isSelected) {
+          selected.push(clip);
+        }
+      }
+    });
+    return selected;
+  }
+
+  function findOrCreatePremiereBin(name) {
+    var root = app.project.rootItem;
+    var i;
+    for (i = 0; i < root.children.numItems; i += 1) {
+      if (root.children[i].name === name && root.children[i].type === ProjectItemType.BIN) {
+        return root.children[i];
+      }
+    }
+    return root.createBin(name);
+  }
+
+  function findPremiereProjectItem(container, name) {
+    var i;
+    var found;
+    for (i = 0; i < container.children.numItems; i += 1) {
+      var item = container.children[i];
+      if (item.name === name) {
+        return item;
+      }
+      if (item.type === ProjectItemType.BIN) {
+        found = findPremiereProjectItem(item, name);
+        if (found) {
+          return found;
+        }
+      }
+    }
+    return null;
+  }
+
+  function inspectPremiereSequence(args) {
+    var sequence = activePremiereSequence();
+    var settings = premiereSequenceSettings(sequence);
+    var maxClips = Math.max(1, Math.min(args && args.maxClips ? args.maxClips : 80, 200));
+    var tracks = [];
+    var selectedCount = 0;
+    var markerCount = 0;
+
+    eachPremiereTrack(sequence, function (track, kind, index) {
+      var clips = [];
+      var i;
+      for (i = 0; i < track.clips.numItems && i < maxClips; i += 1) {
+        var clip = track.clips[i];
+        var isSelected = false;
+        try {
+          isSelected = clip.isSelected();
+        } catch (selectionError) {
+        }
+        if (isSelected) {
+          selectedCount += 1;
+        }
+        clips.push({
+          name: clip.name,
+          start: clip.start ? clip.start.seconds : 0,
+          end: clip.end ? clip.end.seconds : 0,
+          selected: isSelected
+        });
+      }
+      tracks.push({
+        kind: kind,
+        index: index,
+        name: track.name || (kind + " " + (index + 1)),
+        clipCount: track.clips.numItems,
+        clips: clips
+      });
+    });
+
+    try {
+      markerCount = sequence.markers.numMarkers || 0;
+    } catch (markerCountError) {
+    }
+
+    return {
+      message: "Inspected sequence: " + sequence.name + " (" + selectedCount + " selected clip(s)).",
+      sequence: {
+        name: sequence.name,
+        width: settings.width || 0,
+        height: settings.height || 0,
+        frameRate: settings.frameRate || 0,
+        videoTrackCount: sequence.videoTracks.numTracks,
+        audioTrackCount: sequence.audioTracks.numTracks,
+        markerCount: markerCount,
+        selectedClips: selectedCount,
+        tracks: tracks
+      }
+    };
+  }
+
+  function createPremiereSequence(args) {
+    if (!isPremiere()) {
+      throw new Error("Sequence creation is currently available in Premiere Pro.");
+    }
+    if (!app.project) {
+      throw new Error("No Premiere Pro project is open.");
+    }
+    if (!app.project.activeSequence) {
+      throw new Error("Open or select an existing sequence first so AI+ can copy its settings for the new one.");
+    }
+
+    var name = (args && args.name) || "AI+ Sequence";
+    var sequence = app.project.createNewSequence(name, app.project.activeSequence.sequenceID);
+
+    if (!sequence) {
+      throw new Error("Unable to create sequence.");
+    }
+
+    app.project.activeSequence = sequence;
+
+    return {
+      message: "Created sequence: " + sequence.name,
+      sequenceName: sequence.name
+    };
+  }
+
+  function placePremiereClip(args) {
+    var sequence = activePremiereSequence();
+    var name = args && args.itemName ? args.itemName : "";
+    var trackIndex = Math.max(0, Number(args && args.trackIndex !== undefined ? args.trackIndex : 0));
+    var trackType = String(args && args.trackType ? args.trackType : "video").toLowerCase();
+    var time = Number(args && args.time !== undefined ? args.time : 0);
+    var overwrite = Boolean(args && args.overwrite);
+    var item;
+    var track;
+
+    if (!name) {
+      throw new Error("A project item name is required to place a clip.");
+    }
+
+    item = findPremiereProjectItem(app.project.rootItem, name);
+    if (!item) {
+      throw new Error("Project item not found: " + name);
+    }
+
+    track = trackType === "audio" ? sequence.audioTracks[trackIndex] : sequence.videoTracks[trackIndex];
+    if (!track) {
+      throw new Error("Track not found: " + trackType + " " + (trackIndex + 1));
+    }
+
+    if (overwrite) {
+      track.overwriteClip(item, String(time));
+    } else {
+      track.insertClip(item, String(time));
+    }
+
+    return {
+      message: "Placed \"" + name + "\" on " + trackType + " track " + (trackIndex + 1) + " at " + time + "s."
+    };
+  }
+
+  function trimPremiereClips(args) {
+    var sequence = activePremiereSequence();
+    var selected = selectedPremiereTrackItems(sequence);
+    var startDelta = Number(args && args.startDelta !== undefined ? args.startDelta : 0);
+    var endDelta = Number(args && args.endDelta !== undefined ? args.endDelta : 0);
+    var count = 0;
+    var i;
+
+    if (!selected.length) {
+      throw new Error("Select at least one timeline clip to trim.");
+    }
+    if (!startDelta && !endDelta) {
+      throw new Error("Provide startDelta and/or endDelta seconds to trim by.");
+    }
+
+    for (i = 0; i < selected.length; i += 1) {
+      var clip = selected[i];
+      try {
+        if (startDelta) {
+          clip.start = premiereTime(clip.start.seconds + startDelta);
+        }
+        if (endDelta) {
+          clip.end = premiereTime(clip.end.seconds + endDelta);
+        }
+        count += 1;
+      } catch (trimError) {
+      }
+    }
+
+    if (!count) {
+      throw new Error("Unable to trim the selected clip(s).");
+    }
+
+    return {
+      message: "Trimmed " + count + " clip(s)."
+    };
+  }
+
+  function normalizePremiereClipNames(args) {
+    var sequence = activePremiereSequence();
+    var selected = selectedPremiereTrackItems(sequence);
+    var prefix = (args && args.prefix) || "AI+ Clip";
+    var i;
+
+    if (!selected.length) {
+      throw new Error("Select timeline clips before renaming.");
+    }
+
+    for (i = 0; i < selected.length; i += 1) {
+      selected[i].name = prefix + " " + (i + 1);
+    }
+
+    return {
+      message: "Renamed " + selected.length + " clip(s)."
+    };
+  }
+
+  function setPremiereSequenceInOut(args) {
+    var sequence = activePremiereSequence();
+    var hasIn = Boolean(args && args.inPoint !== undefined);
+    var hasOut = Boolean(args && args.outPoint !== undefined);
+
+    if (!hasIn && !hasOut) {
+      throw new Error("Provide inPoint and/or outPoint (seconds).");
+    }
+    if (hasIn) {
+      sequence.setInPoint(Number(args.inPoint));
+    }
+    if (hasOut) {
+      sequence.setOutPoint(Number(args.outPoint));
+    }
+
+    return {
+      message: "Updated sequence work area."
+    };
+  }
+
+  function importPremiereAttachmentAsset(args) {
+    if (!app.project) {
+      throw new Error("No Premiere Pro project is open.");
+    }
+
+    var path = args && args.path ? args.path : "";
+    var file;
+    var bin;
+    var beforeCount;
+    var item;
+
+    if (!path) {
+      throw new Error("Attachment path is required.");
+    }
+
+    file = new File(path);
+    if (!file.exists) {
+      throw new Error("Attachment file does not exist: " + path);
+    }
+
+    bin = findOrCreatePremiereBin("AI+ Assets");
+    beforeCount = bin.children.numItems;
+    app.project.importFiles([file.fsName], true, bin, false);
+    item = bin.children.numItems > beforeCount ? bin.children[bin.children.numItems - 1] : null;
+
+    return {
+      message: "Imported attachment: " + (item ? item.name : file.name),
+      itemName: item ? item.name : file.name
     };
   }
 
@@ -1300,10 +1605,42 @@ var AIPlusHost = AIPlusHost || {};
     };
   }
 
-  function queuePremiereRender() {
+  function queuePremiereRender(args) {
     var sequence = activePremiereSequence();
+    var outputPath = args && args.path ? args.path : "";
+    var presetPath = args && args.presetPath ? args.presetPath : "";
+    var useEncoder = !(args && args.useEncoder === false);
+    var workAreaKey = String(args && args.workArea ? args.workArea : "entire").toLowerCase();
+    var workAreaType = workAreaKey === "inout" ? 1 : workAreaKey === "workarea" ? 2 : 0;
+    var file;
+
+    if (!presetPath) {
+      return {
+        message: "Provide an Adobe Media Encoder preset (.epr) path to export \"" + sequence.name + "\"; queued nothing.",
+        skipped: true
+      };
+    }
+
+    if (!outputPath) {
+      var folder = ensureFolder((app.project.file ? app.project.file.parent.fsName : Folder.desktop.fsName) + "/AI+ Exports");
+      outputPath = folder.fsName + "/" + safeFileName(sequence.name) + ".mp4";
+    }
+
+    file = new File(outputPath);
+    if (file.parent && !file.parent.exists) {
+      file.parent.create();
+    }
+
+    if (useEncoder && app.encoder) {
+      app.encoder.encodeSequence(sequence, file.fsName, presetPath, workAreaType, false);
+      return {
+        message: "Queued Adobe Media Encoder export for " + sequence.name + ": " + file.name
+      };
+    }
+
+    sequence.exportAsMediaDirect(file.fsName, presetPath, workAreaType);
     return {
-      message: "Premiere Pro export requires an encoder preset path; active sequence is " + sequence.name + "."
+      message: "Exported " + sequence.name + " directly to " + file.name
     };
   }
 
@@ -1370,8 +1707,12 @@ var AIPlusHost = AIPlusHost || {};
       return importIllustratorAttachmentAsset(args || {});
     }
 
+    if (isPremiere()) {
+      return importPremiereAttachmentAsset(args || {});
+    }
+
     if (!isAfterEffects()) {
-      throw new Error("Attachment import is currently available in After Effects and Illustrator.");
+      throw new Error("Attachment import is currently available in After Effects, Premiere Pro, and Illustrator.");
     }
     if (!app.project) {
       app.newProject();
@@ -1424,6 +1765,12 @@ var AIPlusHost = AIPlusHost || {};
     organizeProject: organizeProject,
     addMarkers: addMarkers,
     queueRender: queueRender,
+    inspectPremiereSequence: inspectPremiereSequence,
+    createPremiereSequence: createPremiereSequence,
+    placePremiereClip: placePremiereClip,
+    trimPremiereClips: trimPremiereClips,
+    normalizePremiereClipNames: normalizePremiereClipNames,
+    setPremiereSequenceInOut: setPremiereSequenceInOut,
     exportIllustratorPng: exportIllustratorPng,
     generateImageAsset: generateImageAsset,
     importAttachmentAsset: importAttachmentAsset

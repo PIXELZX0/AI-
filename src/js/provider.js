@@ -23,6 +23,11 @@
     return "http://127.0.0.1:" + port + "/plan";
   }
 
+  function usesLocalPlanner(settings) {
+    var provider = settings && settings.provider;
+    return provider === "codex" || provider === "opencode";
+  }
+
   function mergeSettings(settings) {
     var merged = {};
     var key;
@@ -57,7 +62,7 @@
 
   function getEndpointBase() {
     var settings = loadSettings();
-    var endpoint = settings.endpoint || (settings.provider === "codex" ? defaultEndpoint(settings) : "");
+    var endpoint = settings.endpoint || (usesLocalPlanner(settings) ? defaultEndpoint(settings) : "");
 
     if (!endpoint) {
       return "";
@@ -72,7 +77,7 @@
 
   async function planWithEndpoint(prompt, context) {
     var settings = loadSettings();
-    var endpoint = settings.endpoint || (settings.provider === "codex" ? defaultEndpoint(settings) : "");
+    var endpoint = settings.endpoint || (usesLocalPlanner(settings) ? defaultEndpoint(settings) : "");
 
     if (!endpoint) {
       return null;
@@ -146,6 +151,7 @@
   root.provider = {
     getEndpointBase: getEndpointBase,
     defaultEndpoint: defaultEndpoint,
+    usesLocalPlanner: usesLocalPlanner,
     loadSettings: loadSettings,
     mergeSettings: mergeSettings,
     saveSettings: saveSettings,

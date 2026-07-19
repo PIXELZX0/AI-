@@ -487,7 +487,7 @@
     var normalized = root.agent.normalizeHost(info);
     var label = info.appName ? info.appName + " " + (info.appVersion || "") : "Adobe panel";
     var settings = root.provider.loadSettings();
-    var mode = settings.provider === "codex" ? "Codex" : settings.provider === "anthropic" ? "Claude" : settings.endpoint ? "Endpoint" : "Built-in";
+    var mode = settings.provider === "codex" ? "Codex" : settings.provider === "opencode" ? "opencode" : settings.provider === "anthropic" ? "Claude" : settings.endpoint ? "Endpoint" : "Built-in";
 
     nodes.hostLabel.textContent = label;
     nodes.hostMetric.textContent = normalized.replace("-", " ");
@@ -845,7 +845,7 @@
     nodes.providerSelect.value = settings.provider || "codex";
     nodes.modelInput.value = settings.model || "";
     nodes.thinkingSelect.value = settings.thinking || "auto";
-    nodes.endpointInput.value = settings.endpoint || (settings.provider === "codex" ? root.provider.defaultEndpoint(settings) : "");
+    nodes.endpointInput.value = settings.endpoint || (root.provider.usesLocalPlanner(settings) ? root.provider.defaultEndpoint(settings) : "");
     nodes.openRouterInput.value = settings.openRouterKey || "";
     nodes.imageModelSelect.value = settings.imageModel || "google/nano-banana";
     nodes.preferredFontsInput.value = settings.preferredFonts || "";
@@ -856,6 +856,18 @@
     nodes.mcpUrlInput.checked = Boolean(settings.mcpUrl);
     updateMcpSettingsUi();
     nodes.settingsDialog.showModal();
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        nodes.settingsDialog.classList.add("dialog-visible");
+      });
+    });
+  }
+
+  function closeSettingsDialog() {
+    nodes.settingsDialog.classList.remove("dialog-visible");
+    window.setTimeout(function () {
+      nodes.settingsDialog.close();
+    }, 160);
   }
 
   function saveSettings() {
@@ -881,7 +893,7 @@
     updateMcpSettingsUi();
     startJobPolling();
     addLog("settings", "Settings saved.");
-    nodes.settingsDialog.close();
+    closeSettingsDialog();
   }
 
   function quickSaveComposerSettings() {
@@ -1093,8 +1105,8 @@
     if (nodes.historyView) {
       nodes.historyView.classList.toggle("hidden", tab !== "history");
     }
-    if (nodes.skillsView && nodes.skillsView.closest("#drawerPanel")) {
-      nodes.skillsView.classList.toggle("hidden", tab !== "skills");
+    if (nodes.sessionView) {
+      nodes.sessionView.classList.toggle("hidden", tab !== "session");
     }
   }
 
@@ -1197,9 +1209,7 @@
     nodes.copyPlanButton.addEventListener("click", copyPlan);
     nodes.settingsButton.addEventListener("click", openSettings);
     nodes.configButton.addEventListener("click", openSettings);
-    nodes.closeSettingsButton.addEventListener("click", function () {
-      nodes.settingsDialog.close();
-    });
+    nodes.closeSettingsButton.addEventListener("click", closeSettingsDialog);
     nodes.saveSettingsButton.addEventListener("click", saveSettings);
     nodes.newChatButton.addEventListener("click", startNewChat);
     nodes.historyButton.addEventListener("click", toggleHistory);
@@ -1289,14 +1299,6 @@
         setInspectorTab(button.getAttribute("data-inspector-tab"));
       });
     });
-    Array.prototype.forEach.call(document.querySelectorAll(".tool-chip"), function (button) {
-      button.addEventListener("click", function () {
-        nodes.promptInput.value = button.getAttribute("data-command");
-        resizeComposer();
-        renderSkillMenu();
-        makePlan();
-      });
-    });
     window.addEventListener("beforeunload", persistSessions);
   }
 
@@ -1331,6 +1333,7 @@
       "historyButton",
       "drawerPanel",
       "historyView",
+      "sessionView",
       "skillsView",
       "historyList",
       "skillList",

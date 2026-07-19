@@ -13,6 +13,8 @@ const OPENAI_MODEL = process.env.AI_PLUS_MODEL || "";
 const OPENAI_RESPONSES_URL = process.env.OPENAI_RESPONSES_URL || "https://api.openai.com/v1/responses";
 const CODEX_BIN = process.env.AI_PLUS_CODEX_BIN || process.env.CODEX_BIN || "codex";
 const CODEX_TIMEOUT_MS = Number(process.env.AI_PLUS_CODEX_TIMEOUT_MS || 180000);
+const OPENCODE_BIN = process.env.AI_PLUS_OPENCODE_BIN || process.env.OPENCODE_BIN || "opencode";
+const OPENCODE_TIMEOUT_MS = Number(process.env.AI_PLUS_OPENCODE_TIMEOUT_MS || 180000);
 const PLANNER_MODE = String(process.env.AI_PLUS_PLANNER || "").toLowerCase();
 
 const defaultTools = getToolIds();
@@ -664,7 +666,7 @@ function resolveOpenAIModel(settings) {
   return String(model);
 }
 
-function shouldUseOpenAIPlanner(settings, codexRequested) {
+function shouldUseOpenAIPlanner(settings, otherPlannerRequested) {
   const provider = normalizeProvider(settings);
 
   if (PLANNER_MODE === "openai") {
@@ -675,7 +677,31 @@ function shouldUseOpenAIPlanner(settings, codexRequested) {
     return false;
   }
 
-  return provider === "openai" || (!provider && !codexRequested);
+  return provider === "openai" || (!provider && !otherPlannerRequested);
+}
+
+function shouldUseOpencodePlanner(settings) {
+  const provider = normalizeProvider(settings);
+
+  if (PLANNER_MODE === "opencode") {
+    return true;
+  }
+
+  if (PLANNER_MODE === "codex" || PLANNER_MODE === "openai" || PLANNER_MODE === "fallback" || PLANNER_MODE === "builtin") {
+    return false;
+  }
+
+  return provider === "opencode";
+}
+
+function resolveOpencodeModel(settings) {
+  const model = process.env.AI_PLUS_OPENCODE_MODEL || (settings && settings.model) || "";
+
+  if (!model || String(model).toLowerCase() === "opencode") {
+    return "";
+  }
+
+  return String(model);
 }
 
 function codexPrompt(prompt, context, allowedTools) {
@@ -795,6 +821,45 @@ async function callCodexPlanner(prompt, context, allowedTools, settings) {
   }
 }
 
+function opencodePrompt(prompt, context, allowedTools) {
+  return [
+    "You are AI+, an opencode-powered planning agent for Adobe After Effects, Premiere Pro, and Illustrator.",
+    "Create one compact JSON plan for the user's Adobe automation request.",
+    "Reply with only raw JSON matching this schema. No Markdown fences, no commentary.",
+    JSON.stringify(planSchema(allowedTools)),
+    "Use only tool IDs from the allowed tools list. Never invent tools.",
+    "Prefer reversible, small actions. Do not request arbitrary code execution.",
+    "Do not edit local files or run shell commands; this task is planning only.",
+    "",
+    "User request:",
+    String(prompt || ""),
+    "",
+    "Context JSON:",
+    JSON.stringify(context || {}, null, 2),
+    "",
+    "Allowed tools JSON:",
+    JSON.stringify(allowedTools || [], null, 2)
+  ].join("\n");
+}
+
+async function callOpencodePlanner(prompt, context, allowedTools, settings) {
+  const model = resolveOpencodeModel(settings);
+  const args = ["run"];
+
+  if (model) {
+    args.push("--model", model);
+  }
+
+  // ponytail: opencode-go's `run` subcommand has no --output-schema flag like
+  // Codex CLI, so the schema is embedded in the prompt text and the JSON is
+  // pulled back out with parseJsonFromText. Switch to a structured-output flag
+  // if/when opencode-go adds one.
+  args.push(opencodePrompt(prompt, context, allowedTools));
+
+  const result = await runProcess(OPENCODE_BIN, args, "", OPENCODE_TIMEOUT_MS);
+  return parseJsonFromText(result.stdout);
+}
+
 async function callOpenAIPlanner(prompt, context, allowedTools, model) {
   const systemPrompt = [
     "You are AI+, an Adobe After Effects, Premiere Pro, and Illustrator planning agent with AI+ style chat, checkpoint, skill, attachment, image, and MCP workflows.",
@@ -857,6 +922,7 @@ async function buildPlan(payload) {
   const allowedTools = effectiveAllowedTools(payload.allowedTools, context.host || "");
   const warnings = [];
   const codexRequested = shouldUseCodexPlanner(settings);
+  const opencodeRequested = shouldUseOpencodePlanner(settings);
   const openAIModel = resolveOpenAIModel(settings);
 
   if (codexRequested) {
@@ -870,7 +936,18 @@ async function buildPlan(payload) {
     }
   }
 
-  if (OPENAI_API_KEY && openAIModel && shouldUseOpenAIPlanner(settings, codexRequested)) {
+  if (opencodeRequested) {
+    try {
+      return {
+        source: "opencode",
+        ...sanitizePlan(await callOpencodePlanner(prompt, context, allowedTools, settings), allowedTools)
+      };
+    } catch (error) {
+      warnings.push("opencode planner failed: " + error.message);
+    }
+  }
+
+  if (OPENAI_API_KEY && openAIModel && shouldUseOpenAIPlanner(settings, codexRequested || opencodeRequested)) {
     try {
       return {
         source: "openai",
@@ -902,6 +979,10 @@ const server = http.createServer(async (request, response) => {
       codex: {
         command: CODEX_BIN,
         timeoutMs: CODEX_TIMEOUT_MS
+      },
+      opencode: {
+        command: OPENCODE_BIN,
+        timeoutMs: OPENCODE_TIMEOUT_MS
       },
       openai: {
         configured: Boolean(OPENAI_API_KEY && OPENAI_MODEL),
@@ -1010,6 +1091,7 @@ if (require.main === module) {
     console.log("AI+ planner listening at http://127.0.0.1:" + PORT + "/plan");
     console.log("AI+ Adobe job bridge listening at http://127.0.0.1:" + PORT + "/jobs");
     console.log("Codex CLI planner command: " + CODEX_BIN);
+    console.log("opencode-go planner command: " + OPENCODE_BIN);
     if (!OPENAI_API_KEY || !OPENAI_MODEL) {
       console.log("OpenAI API planner disabled. Set OPENAI_API_KEY and AI_PLUS_MODEL to enable it.");
     }

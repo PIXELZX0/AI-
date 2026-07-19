@@ -85,6 +85,22 @@ Without Codex CLI access or model credentials, the server uses deterministic fal
 AI_PLUS_PLANNER=openai OPENAI_API_KEY=... AI_PLUS_MODEL=... npm run planner
 ```
 
+## opencode-go AI Planner
+
+Set the panel provider to `opencode-go` to have the planner shell out to the [opencode](https://opencode.ai) CLI instead of Codex. Same bundled server, same `http://127.0.0.1:8787/plan` endpoint.
+
+If `opencode` is not on the server process `PATH`, point AI+ at it:
+
+```sh
+AI_PLUS_OPENCODE_BIN=/path/to/opencode npm run planner
+```
+
+To force the opencode-go planner regardless of the panel's provider setting:
+
+```sh
+AI_PLUS_PLANNER=opencode npm run planner
+```
+
 The endpoint accepts:
 
 ```json
@@ -153,7 +169,7 @@ npm run package:zxp
 Output:
 
 ```text
-dist/AIPlus-0.2.5-dev.zxp
+dist/AIPlus-0.3.0-dev.zxp
 ```
 
 For an installer-ready signed ZXP, install `ZXPSignCmd`, then run:
