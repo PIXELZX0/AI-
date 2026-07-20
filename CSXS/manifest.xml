@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ExtensionManifest Version="7.0" ExtensionBundleId="com.aiplus.bundle" ExtensionBundleVersion="0.3.0" ExtensionBundleName="AI+">
+<ExtensionManifest Version="7.0" ExtensionBundleId="com.aiplus.bundle" ExtensionBundleVersion="0.3.1" ExtensionBundleName="AI+">
   <ExtensionList>
-    <Extension Id="com.aiplus.panel" Version="0.3.0"/>
+    <Extension Id="com.aiplus.panel" Version="0.3.1"/>
   </ExtensionList>
   <ExecutionEnvironment>
     <HostList>

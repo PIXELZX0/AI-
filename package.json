@@ -1,6 +1,6 @@
 {
   "name": "ai-plus-adobe-panel",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "AI+ Adobe After Effects, Premiere Pro, and Illustrator panel scaffold.",
   "scripts": {

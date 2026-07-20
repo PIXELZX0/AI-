@@ -135,11 +135,13 @@
                 <option value="opencode">opencode-go</option>
                 <option value="openai">OpenAI API</option>
                 <option value="anthropic">Anthropic / Claude Code</option>
+                <option value="openrouter">OpenRouter</option>
                 <option value="endpoint">Local endpoint</option>
               </select>
 
               <label for="modelInput">Model</label>
-              <input id="modelInput" type="text" placeholder="gpt-5.2-codex">
+              <input id="modelInput" type="text" list="modelOptions" placeholder="gpt-5.2-codex">
+              <datalist id="modelOptions"></datalist>
 
               <label for="thinkingSelect">Thinking</label>
               <select id="thinkingSelect">
@@ -153,6 +155,9 @@
 
               <label for="openRouterInput">OpenRouter key</label>
               <input id="openRouterInput" type="password" placeholder="sk-or-...">
+
+              <label for="anthropicKeyInput">Anthropic key</label>
+              <input id="anthropicKeyInput" type="password" placeholder="sk-ant-...">
 
               <label for="imageModelSelect">Image model</label>
               <select id="imageModelSelect">
@@ -216,7 +221,7 @@
           </section>
 
           <menu>
-            <span id="versionLabel" class="footerbar">v0.3.0</span>
+            <span id="versionLabel" class="footerbar">v0.3.1</span>
             <button id="saveSettingsButton" class="primary-button" type="button">Save</button>
           </menu>
         </div>

@@ -11,6 +11,13 @@ const PORT = Number(process.env.AI_PLUS_PORT || process.env.PORT || 8787);
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const OPENAI_MODEL = process.env.AI_PLUS_MODEL || "";
 const OPENAI_RESPONSES_URL = process.env.OPENAI_RESPONSES_URL || "https://api.openai.com/v1/responses";
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
+const ANTHROPIC_MODEL = process.env.AI_PLUS_ANTHROPIC_MODEL || "";
+const ANTHROPIC_MESSAGES_URL = process.env.ANTHROPIC_MESSAGES_URL || "https://api.anthropic.com/v1/messages";
+const ANTHROPIC_VERSION = process.env.ANTHROPIC_VERSION || "2023-06-01";
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
+const OPENROUTER_MODEL = process.env.AI_PLUS_OPENROUTER_MODEL || "";
+const OPENROUTER_CHAT_URL = process.env.OPENROUTER_CHAT_URL || "https://openrouter.ai/api/v1/chat/completions";
 const CODEX_BIN = process.env.AI_PLUS_CODEX_BIN || process.env.CODEX_BIN || "codex";
 const CODEX_TIMEOUT_MS = Number(process.env.AI_PLUS_CODEX_TIMEOUT_MS || 180000);
 const OPENCODE_BIN = process.env.AI_PLUS_OPENCODE_BIN || process.env.OPENCODE_BIN || "opencode";
@@ -638,7 +645,7 @@ function shouldUseCodexPlanner(settings) {
     return true;
   }
 
-  if (PLANNER_MODE === "openai" || PLANNER_MODE === "fallback" || PLANNER_MODE === "builtin") {
+  if (PLANNER_MODE === "openai" || PLANNER_MODE === "anthropic" || PLANNER_MODE === "openrouter" || PLANNER_MODE === "fallback" || PLANNER_MODE === "builtin") {
     return false;
   }
 
@@ -673,7 +680,7 @@ function shouldUseOpenAIPlanner(settings, otherPlannerRequested) {
     return true;
   }
 
-  if (PLANNER_MODE === "fallback" || PLANNER_MODE === "builtin") {
+  if (PLANNER_MODE === "anthropic" || PLANNER_MODE === "openrouter" || PLANNER_MODE === "fallback" || PLANNER_MODE === "builtin") {
     return false;
   }
 
@@ -687,7 +694,7 @@ function shouldUseOpencodePlanner(settings) {
     return true;
   }
 
-  if (PLANNER_MODE === "codex" || PLANNER_MODE === "openai" || PLANNER_MODE === "fallback" || PLANNER_MODE === "builtin") {
+  if (PLANNER_MODE === "codex" || PLANNER_MODE === "openai" || PLANNER_MODE === "anthropic" || PLANNER_MODE === "openrouter" || PLANNER_MODE === "fallback" || PLANNER_MODE === "builtin") {
     return false;
   }
 
@@ -702,6 +709,46 @@ function resolveOpencodeModel(settings) {
   }
 
   return String(model);
+}
+
+function resolveAnthropicModel(settings) {
+  const provider = normalizeProvider(settings);
+  const model = ANTHROPIC_MODEL || (provider === "anthropic" ? settings && settings.model : "");
+  return model ? String(model) : "";
+}
+
+function shouldUseAnthropicPlanner(settings) {
+  const provider = normalizeProvider(settings);
+
+  if (PLANNER_MODE === "anthropic") {
+    return true;
+  }
+
+  if (PLANNER_MODE && PLANNER_MODE !== "anthropic") {
+    return false;
+  }
+
+  return provider === "anthropic";
+}
+
+function resolveOpenRouterModel(settings) {
+  const provider = normalizeProvider(settings);
+  const model = OPENROUTER_MODEL || (provider === "openrouter" ? settings && settings.model : "");
+  return model ? String(model) : "";
+}
+
+function shouldUseOpenRouterPlanner(settings) {
+  const provider = normalizeProvider(settings);
+
+  if (PLANNER_MODE === "openrouter") {
+    return true;
+  }
+
+  if (PLANNER_MODE && PLANNER_MODE !== "openrouter") {
+    return false;
+  }
+
+  return provider === "openrouter";
 }
 
 function codexPrompt(prompt, context, allowedTools) {
@@ -911,6 +958,90 @@ async function callOpenAIPlanner(prompt, context, allowedTools, model) {
   return JSON.parse(extractOutputText(data));
 }
 
+async function callAnthropicPlanner(prompt, context, allowedTools, model, apiKey) {
+  const systemPrompt = [
+    "You are AI+, an Adobe After Effects, Premiere Pro, and Illustrator planning agent with AI+ style chat, checkpoint, skill, attachment, image, and MCP workflows.",
+    "Call the emit_plan tool exactly once with a compact plan that uses only the provided tool names.",
+    "Never invent tools. Prefer reversible, small actions. Do not request arbitrary code execution.",
+    "When the request is broad, summarize and inspect the project first, then choose safe creative actions."
+  ].join(" ");
+
+  const response = await fetch(ANTHROPIC_MESSAGES_URL, {
+    method: "POST",
+    headers: {
+      "x-api-key": apiKey,
+      "anthropic-version": ANTHROPIC_VERSION,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 4096,
+      system: systemPrompt,
+      messages: [
+        {
+          role: "user",
+          content: JSON.stringify({ prompt, context, allowedTools })
+        }
+      ],
+      tools: [
+        {
+          name: "emit_plan",
+          description: "Emit the AI+ automation plan.",
+          input_schema: planSchema(allowedTools)
+        }
+      ],
+      tool_choice: { type: "tool", name: "emit_plan" }
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error("Anthropic planner failed with HTTP " + response.status + ": " + errorText.slice(0, 300));
+  }
+
+  const data = await response.json();
+  const toolUse = (data.content || []).find((block) => block.type === "tool_use");
+
+  if (!toolUse) {
+    throw new Error("Anthropic planner did not return a tool call.");
+  }
+
+  return toolUse.input;
+}
+
+async function callOpenRouterPlanner(prompt, context, allowedTools, model, apiKey) {
+  const systemPrompt = [
+    "You are AI+, an Adobe After Effects, Premiere Pro, and Illustrator planning agent with AI+ style chat, checkpoint, skill, attachment, image, and MCP workflows.",
+    "Return only a compact JSON object (no Markdown) with keys \"title\" and \"actions\" that uses only the provided tool names.",
+    "Never invent tools. Prefer reversible, small actions. Do not request arbitrary code execution."
+  ].join(" ");
+
+  const response = await fetch(OPENROUTER_CHAT_URL, {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer " + apiKey,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: JSON.stringify({ prompt, context, allowedTools }) }
+      ]
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error("OpenRouter planner failed with HTTP " + response.status + ": " + errorText.slice(0, 300));
+  }
+
+  const data = await response.json();
+  const text = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+  return parseJsonFromText(text);
+}
+
 async function buildPlan(payload) {
   const prompt = payload.prompt || "";
   const baseContext = payload.context || {};
@@ -944,6 +1075,34 @@ async function buildPlan(payload) {
       };
     } catch (error) {
       warnings.push("opencode planner failed: " + error.message);
+    }
+  }
+
+  const anthropicKey = settings.anthropicKey || ANTHROPIC_API_KEY;
+  const anthropicModel = resolveAnthropicModel(settings);
+
+  if (anthropicKey && anthropicModel && shouldUseAnthropicPlanner(settings)) {
+    try {
+      return {
+        source: "anthropic",
+        ...sanitizePlan(await callAnthropicPlanner(prompt, context, allowedTools, anthropicModel, anthropicKey), allowedTools)
+      };
+    } catch (error) {
+      warnings.push("Anthropic planner failed: " + error.message);
+    }
+  }
+
+  const openRouterKey = settings.openRouterKey || OPENROUTER_API_KEY;
+  const openRouterModel = resolveOpenRouterModel(settings);
+
+  if (openRouterKey && openRouterModel && shouldUseOpenRouterPlanner(settings)) {
+    try {
+      return {
+        source: "openrouter",
+        ...sanitizePlan(await callOpenRouterPlanner(prompt, context, allowedTools, openRouterModel, openRouterKey), allowedTools)
+      };
+    } catch (error) {
+      warnings.push("OpenRouter planner failed: " + error.message);
     }
   }
 
@@ -987,6 +1146,14 @@ const server = http.createServer(async (request, response) => {
       openai: {
         configured: Boolean(OPENAI_API_KEY && OPENAI_MODEL),
         model: OPENAI_MODEL || ""
+      },
+      anthropic: {
+        configured: Boolean(ANTHROPIC_API_KEY && ANTHROPIC_MODEL),
+        model: ANTHROPIC_MODEL || ""
+      },
+      openrouter: {
+        configured: Boolean(OPENROUTER_API_KEY && OPENROUTER_MODEL),
+        model: OPENROUTER_MODEL || ""
       },
       tools: tools.length,
       jobs: jobCounts()

@@ -169,7 +169,7 @@ npm run package:zxp
 Output:
 
 ```text
-dist/AIPlus-0.3.0-dev.zxp
+dist/AIPlus-0.3.1-dev.zxp
 ```
 
 For an installer-ready signed ZXP, install `ZXPSignCmd`, then run:

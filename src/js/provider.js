@@ -9,6 +9,7 @@
     endpoint: "",
     thinking: "auto",
     openRouterKey: "",
+    anthropicKey: "",
     imageModel: "google/nano-banana",
     preferredFonts: "",
     confirmReverts: true,
@@ -26,6 +27,19 @@
   function usesLocalPlanner(settings) {
     var provider = settings && settings.provider;
     return provider === "codex" || provider === "opencode";
+  }
+
+  var modelCatalog = {
+    codex: ["gpt-5.2-codex", "gpt-5.1-codex", "gpt-5.1-codex-mini"],
+    opencode: ["gpt-5.2-codex", "claude-opus-4-8", "claude-sonnet-5"],
+    openai: ["gpt-5.2", "gpt-5.2-codex", "gpt-5.1", "gpt-5.1-mini"],
+    anthropic: ["claude-opus-4-8", "claude-sonnet-5", "claude-haiku-4-5-20251001"],
+    openrouter: ["anthropic/claude-sonnet-5", "openai/gpt-5.2", "google/gemini-3-pro"],
+    endpoint: []
+  };
+
+  function modelsFor(provider) {
+    return modelCatalog[provider] || [];
   }
 
   function mergeSettings(settings) {
@@ -96,7 +110,9 @@
           model: settings.model,
           thinking: settings.thinking,
           imageModel: settings.imageModel,
-          preferredFonts: settings.preferredFonts
+          preferredFonts: settings.preferredFonts,
+          openRouterKey: settings.openRouterKey,
+          anthropicKey: settings.anthropicKey
         },
         allowedTools: root.toolRegistry.all
       })
@@ -152,6 +168,7 @@
     getEndpointBase: getEndpointBase,
     defaultEndpoint: defaultEndpoint,
     usesLocalPlanner: usesLocalPlanner,
+    modelsFor: modelsFor,
     loadSettings: loadSettings,
     mergeSettings: mergeSettings,
     saveSettings: saveSettings,

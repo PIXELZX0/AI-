@@ -487,7 +487,7 @@
     var normalized = root.agent.normalizeHost(info);
     var label = info.appName ? info.appName + " " + (info.appVersion || "") : "Adobe panel";
     var settings = root.provider.loadSettings();
-    var mode = settings.provider === "codex" ? "Codex" : settings.provider === "opencode" ? "opencode" : settings.provider === "anthropic" ? "Claude" : settings.endpoint ? "Endpoint" : "Built-in";
+    var mode = settings.provider === "codex" ? "Codex" : settings.provider === "opencode" ? "opencode" : settings.provider === "anthropic" ? "Claude" : settings.provider === "openrouter" ? "OpenRouter" : settings.endpoint ? "Endpoint" : "Built-in";
 
     nodes.hostLabel.textContent = label;
     nodes.hostMetric.textContent = normalized.replace("-", " ");
@@ -840,13 +840,22 @@
     writeClipboard(JSON.stringify(state.currentPlan, null, 2), "Plan copied.");
   }
 
+  function syncModelOptions() {
+    var options = root.provider.modelsFor(nodes.providerSelect.value);
+    nodes.modelOptions.innerHTML = options.map(function (model) {
+      return "<option value=\"" + model + "\"></option>";
+    }).join("");
+  }
+
   function openSettings() {
     var settings = root.provider.loadSettings();
     nodes.providerSelect.value = settings.provider || "codex";
+    syncModelOptions();
     nodes.modelInput.value = settings.model || "";
     nodes.thinkingSelect.value = settings.thinking || "auto";
     nodes.endpointInput.value = settings.endpoint || (root.provider.usesLocalPlanner(settings) ? root.provider.defaultEndpoint(settings) : "");
     nodes.openRouterInput.value = settings.openRouterKey || "";
+    nodes.anthropicKeyInput.value = settings.anthropicKey || "";
     nodes.imageModelSelect.value = settings.imageModel || "google/nano-banana";
     nodes.preferredFontsInput.value = settings.preferredFonts || "";
     nodes.mcpPortInput.value = settings.mcpPort || 8787;
@@ -877,6 +886,7 @@
       endpoint: nodes.endpointInput.value.trim(),
       thinking: nodes.thinkingSelect.value,
       openRouterKey: nodes.openRouterInput.value.trim(),
+      anthropicKey: nodes.anthropicKeyInput.value.trim(),
       imageModel: nodes.imageModelSelect.value,
       preferredFonts: nodes.preferredFontsInput.value.trim(),
       confirmReverts: nodes.confirmRevertsInput.checked,
@@ -1209,6 +1219,7 @@
     nodes.copyPlanButton.addEventListener("click", copyPlan);
     nodes.settingsButton.addEventListener("click", openSettings);
     nodes.configButton.addEventListener("click", openSettings);
+    nodes.providerSelect.addEventListener("change", syncModelOptions);
     nodes.closeSettingsButton.addEventListener("click", closeSettingsDialog);
     nodes.saveSettingsButton.addEventListener("click", saveSettings);
     nodes.newChatButton.addEventListener("click", startNewChat);
@@ -1357,7 +1368,9 @@
       "checkpointList",
       "providerSelect",
       "modelInput",
+      "modelOptions",
       "openRouterInput",
+      "anthropicKeyInput",
       "imageModelSelect",
       "preferredFontsInput",
       "mcpPortInput",
